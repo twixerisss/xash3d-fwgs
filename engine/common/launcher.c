@@ -16,6 +16,7 @@ GNU General Public License for more details.
 #if XASH_ENABLE_MAIN
 #include "build.h"
 #include "common.h"
+#include "platform/platform.h"
 
 #if XASH_SDLMAIN
 #include <SDL.h>
@@ -35,6 +36,11 @@ static void Sys_ChangeGame( const char *progname )
 
 int main( int argc, char **argv )
 {
+#if XASH_OGC
+	// bring up the debug console before anything can crash
+	OGC_EarlyInit();
+#endif
+
 #if XASH_PSVITA
 	// inject -dev -console into args if required
 	szArgc = PSVita_GetArgv( argc, argv, &szArgv );

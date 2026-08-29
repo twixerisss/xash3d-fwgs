@@ -114,6 +114,12 @@ int PSVita_GetArgv( int in_argc, char **in_argv, char ***out_argv );
 void PSVita_InputUpdate( void );
 #endif
 
+#if XASH_OGC
+void OGC_EarlyInit( void );
+void OGC_Init( void );
+void OGC_Shutdown( void );
+#endif
+
 #if XASH_DOS
 void DOS_Init( void );
 void DOS_Shutdown( void );
