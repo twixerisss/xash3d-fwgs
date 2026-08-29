@@ -71,6 +71,23 @@ void OGC_EarlyInit( void )
 	// brings the gecko up: without this usb_isgeckoalive() stays false
 	CON_EnableGecko( XASH_OGC_GECKO_CHANNEL, false );
 
+#if XASH_OGC_GECKO_WAIT
+	// Under Dolphin the capture tool races the emulated boot, and anything
+	// printed before it attaches is gone for good. Give it a bounded window
+	// to show up. Never enable this for a hardware build: with no gecko
+	// plugged in it just burns the whole timeout on every launch.
+	{
+		int tries;
+
+		for( tries = 0; tries < XASH_OGC_GECKO_WAIT * 100; tries++ )
+		{
+			if( usb_isgeckoalive( XASH_OGC_GECKO_CHANNEL ))
+				break;
+			usleep( 10000 );
+		}
+	}
+#endif
+
 	// libogc 3.1 no longer points stdout at the gecko console, so hook
 	// newlib's device table ourselves. Everything the engine prints
 	// (Con_Printf, Sys_Error, plain printf) goes out the wire from here on.
@@ -83,11 +100,24 @@ void OGC_EarlyInit( void )
 
 void OGC_Init( void )
 {
-	SYS_STDIO_Report(true);
+	// NOTE: no SYS_STDIO_Report( true ) here. It looks harmless but it
+	// replaces devoptab_list[STD_OUT] with libogc's UART device, which talks
+	// to EXI channel 0 device 1 - a debug port that doesn't exist on retail
+	// hardware and that hangs outright under Dolphin. It would also undo the
+	// gecko hook installed in OGC_EarlyInit.
+
+	// each step is announced: all of these poke at hardware that can hang,
+	// and this is the only way to see which one did
+	printf( "OGC_Init: WPAD\n" );
 	WPAD_Init();
-	KEYBOARD_Init(NULL);
-	MOUSE_Init(NULL);
-	printf( "%s\n", __func__ );
+
+	printf( "OGC_Init: USB keyboard\n" );
+	KEYBOARD_Init( NULL );
+
+	printf( "OGC_Init: USB mouse\n" );
+	MOUSE_Init( NULL );
+
+	printf( "OGC_Init: done\n" );
 }
 
 void OGC_Shutdown( void )
