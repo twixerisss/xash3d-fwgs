@@ -31,6 +31,12 @@ GNU General Public License for more details.
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+// libogc's sbrk honours this weak symbol. Left at 0 the heap comes out of
+// MEM1, which the engine shares with the whole executable - a GL build leaves
+// barely 6MB of it, and loading a map runs the engine out of memory partway
+// through, in a different place on every build. MEM2 has 64MB doing nothing.
+u32 MALLOC_MEM2 = 1;
+
 void Platform_ShellExecute( const char *path, const char *parms )
 {
 	Con_Reportf( S_WARN "Tried to shell execute ;%s; -- not supported\n", path );
