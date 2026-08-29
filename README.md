@@ -50,7 +50,7 @@ This will build:
 | option | default | meaning |
 | --- | --- | --- |
 | `XASH_RENDERER` | `soft` | `soft` for the software rasteriser, `gl` for ref_gl on opengx. Only one can be linked - both compile `ref/common` and both export `GetRefAPI`. |
-| `XASH_LOW_MEMORY` | `2` | Engine memory profile. `0` restores the real menu background, button art and sounds, but currently crashes on map load - see below. |
+| `XASH_LOW_MEMORY` | `2` | Engine memory profile. `0` currently crashes on map load - see below. It no longer affects the menu artwork, which is controlled separately by `ui_lowmemory`. |
 | `XASH_OGC_TRACE` | `OFF` | Report model loads and texture uploads over the gecko. |
 
 The heap lives in MEM2 (`MALLOC_MEM2` in `sys_ogc.c`). MEM1 holds the
@@ -62,8 +62,10 @@ Two known bugs, both of which look like the same thing from different angles:
 * `XASH_RENDERER=gl` initialises, loads a map and precaches all of c0a0, then
   trips the engine's own heap sentinel check (`_Mem_Check: trashed small
   header sentinel`) shortly after signon.
-* `XASH_LOW_MEMORY=0` reaches the menu with the real background and art, but
-  crashes on map load with a NULL callback in libogc's tick task.
+* `XASH_LOW_MEMORY=0` crashes on map load with a NULL callback in libogc's
+  tick task. The menu artwork no longer depends on it - `ui_lowmemory`
+  controls that on its own, and this build ships it enabled - so profile 0 is
+  now only about the engine's own limits.
 
 Both only appear once the engine allocates more than the shipping default
 does, so something is writing past an allocation.

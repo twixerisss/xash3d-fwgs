@@ -224,6 +224,9 @@ target_compile_features(menu PRIVATE cxx_std_11)
 target_compile_definitions(menu PRIVATE
 #-DMAINUI_USE_STB=0
 -DMAINUI_USE_CUSTOM_FONT_RENDER=ON
+# the heap is in MEM2, so the menu can afford its artwork even though the
+# engine still runs at a reduced memory profile
+-DMAINUI_LOWMEMORY_DEFAULT="0"
 
 -DSTDINT_H=<cstdint>
 -Dstricmp=strcasecmp -Dstrnicmp=strncasecmp -D_snprintf=snprintf -D_vsnprintf=vsnprintf
