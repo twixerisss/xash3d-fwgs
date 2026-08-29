@@ -50,14 +50,23 @@ This will build:
 | option | default | meaning |
 | --- | --- | --- |
 | `XASH_RENDERER` | `soft` | `soft` for the software rasteriser, `gl` for ref_gl on opengx. Only one can be linked - both compile `ref/common` and both export `GetRefAPI`. |
-| `XASH_LOW_MEMORY` | `0` | Engine memory profile. `0` is normal and needs the MEM2 heap; raise it first if a map runs out of memory. |
+| `XASH_LOW_MEMORY` | `2` | Engine memory profile. `0` restores the real menu background, button art and sounds, but currently crashes on map load - see below. |
 | `XASH_OGC_TRACE` | `OFF` | Report model loads and texture uploads over the gecko. |
 
 The heap lives in MEM2 (`MALLOC_MEM2` in `sys_ogc.c`). MEM1 holds the
 executable, and a GL build leaves only a few MB of it - not enough to load a
-map. Note that `ref_gl` is not the default yet: it initialises, loads a map
-and precaches everything, then trips the engine's heap sentinel check shortly
-after signon.
+map.
+
+Two known bugs, both of which look like the same thing from different angles:
+
+* `XASH_RENDERER=gl` initialises, loads a map and precaches all of c0a0, then
+  trips the engine's own heap sentinel check (`_Mem_Check: trashed small
+  header sentinel`) shortly after signon.
+* `XASH_LOW_MEMORY=0` reaches the menu with the real background and art, but
+  crashes on map load with a NULL callback in libogc's tick task.
+
+Both only appear once the engine allocates more than the shipping default
+does, so something is writing past an allocation.
 
 ### Debugging
 

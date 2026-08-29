@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 3.13)
 project(xash3d C CXX)
 
 
-# With the heap in MEM2 there is room for the full menu art and the normal
-# engine limits; level 2 also lowers protocol limits, which costs server
-# compatibility. Kept as a knob because it is the first thing to raise if a
-# map runs out of memory.
-set(XASH_LOW_MEMORY "0" CACHE STRING "engine memory profile: 0 normal, 1 low engine limits, 2 low protocol limits")
+# Level 2 is what this port can currently ship. It costs the menu art -
+# mainui drops backgrounds, button bitmaps and sounds whenever this is
+# nonzero - but 0 crashes on map load with a NULL callback in libogc's tick
+# task, so something is corrupting memory once the engine runs at full
+# limits. The protocol limits OGC uses are set unconditionally in
+# protocol.h, so this does not affect server compatibility either way.
+set(XASH_LOW_MEMORY "2" CACHE STRING "engine memory profile: 0 normal, 1 low engine limits, 2 low protocol limits")
 
 find_package(PkgConfig REQUIRED)
 find_package(SDL2 REQUIRED)
