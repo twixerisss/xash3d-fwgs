@@ -25,20 +25,49 @@ The Wii/GC port currently uses cmake to build its binaries. Will integrate it in
 *  Create a development directory
 *  Clone the following repositories in the same directory
 ```
-git clone --recursive https://github.com/MintFerret/xash3d-fwgs
-git clone --recursive https://github.com/MintFerret/mainui_cpp
-git clone --recursive https://github.com/MintFerret/hlsdk-portable
+git clone --recursive https://github.com/twixerisss/xash3d-fwgs
+git clone --recursive https://github.com/twixerisss/mainui_cpp
+git clone --recursive https://github.com/twixerisss/hlsdk-portable
 ```
 
 ### Building
 1) Configure build `cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE="/opt/devkitpro/cmake/Wii.cmake"`
 2) Compile `make -C build`
 
+Or just `./build_wii.sh`, which wraps both steps and picks up devkitPro from
+`$DEVKITPRO`. On CMake 4 the configure step additionally needs
+`-DCMAKE_POLICY_VERSION_MINIMUM=3.5`, because the vendored opus still declares
+a pre-3.5 minimum; the helper script passes it for you.
+
 This will build:
 - the filesystem
 -  hlsdk (game libraries)
 -  mainui
 -  the engine itself
+
+### Debugging
+
+The Wii has nowhere to print to, so the engine can route stdout to a USB Gecko
+in memory card slot B (`-DXASH_OGC_GECKO=1`, on by default in this tree). That
+covers everything from the first line of `main()` onwards, which is where the
+interesting crashes still are.
+
+Dolphin emulates the gecko as a TCP socket, so a headless boot can be captured
+end to end:
+
+```
+./test_wii.sh [seconds]
+```
+
+It launches Dolphin in batch mode with a USB Gecko in slot B, attaches to the
+socket and prints the engine's trace. It reads the SD image from
+`~/Library/Application Support/Dolphin/Load/WiiSD.raw` (Dolphin ignores
+`WiiSDCardPath`), which needs `xash3d/valve` in its root - the same layout as a
+real card. `SDIMG=`, `DOL=` and `DOLPHIN=` override the paths.
+
+Note that Dolphin's SD emulation is roughly a thousand times slower than real
+hardware - every read is a full emulated IOS round trip - so booting under the
+emulator takes minutes where a real Wii takes seconds. Don't optimise for it.
 
 ### Note
 - This is a work in progress
