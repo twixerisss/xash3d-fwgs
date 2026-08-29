@@ -65,6 +65,11 @@ socket and prints the engine's trace. It reads the SD image from
 `WiiSDCardPath`), which needs `xash3d/valve` in its root - the same layout as a
 real card. `SDIMG=`, `DOL=` and `DOLPHIN=` override the paths.
 
+To drive it without input, put commands in `valve/userconfig.cfg` on the card -
+it is exec'd last, after the menu is up, so `map c0a0` boots straight into the
+game. Dolphin can capture what that looks like with
+`-C Dolphin.Movie.DumpFrames=True`, which writes PNGs to `<userdir>/Dump/Frames`.
+
 Note that Dolphin's SD emulation is roughly a thousand times slower than real
 hardware - every read is a full emulated IOS round trip - so booting under the
 emulator takes minutes where a real Wii takes seconds. Don't optimise for it.
