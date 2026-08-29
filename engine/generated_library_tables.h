@@ -17,5 +17,5 @@ struct {const char *name;void *func;} libs[] = {
 { "ref_gl", &lib_ref_gl_exports },
 { "menu", &lib_menu_exports},
 */
-//{ 0 }
+{ NULL, NULL } // Lib_Find walks until this; losing it means it walks off the end
 };
