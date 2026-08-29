@@ -164,6 +164,7 @@ target_compile_definitions(xash PUBLIC
 	-DFRAME_POINTERS=1
 	-DBIGENDIAN=1
 	-DXASH_OGC_GECKO=1
+	-DXASH_OGC_GECKO_WAIT=15 # seconds to wait for a gecko listener; dev builds only
 	#-DUSE_FS_SEARCH_FOR_LOOKUPS=0
 
 
