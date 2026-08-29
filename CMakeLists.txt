@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.13)
 project(xash3d C CXX)
 
 
+# With the heap in MEM2 there is room for the full menu art and the normal
+# engine limits; level 2 also lowers protocol limits, which costs server
+# compatibility. Kept as a knob because it is the first thing to raise if a
+# map runs out of memory.
+set(XASH_LOW_MEMORY "0" CACHE STRING "engine memory profile: 0 normal, 1 low engine limits, 2 low protocol limits")
+
 find_package(PkgConfig REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(BZip2 REQUIRED)
@@ -62,7 +68,7 @@ target_include_directories(filesystem_stdio PUBLIC
 )
 target_compile_definitions(filesystem_stdio PRIVATE
 	-DXASH_GAMEDIR="valve"
-	-DXASH_LOW_MEMORY=2
+	-DXASH_LOW_MEMORY=${XASH_LOW_MEMORY}
 	-DSTDINT_H=<stdint.h>
 	-DHAVE_STRNICMP=0
 	-DHAVE_STRICMP=0
@@ -77,6 +83,52 @@ target_compile_options(filesystem_stdio PRIVATE
 
 #cl_dll, dlls, menu goes here
 include(makelibrary.txt)
+
+# Only one renderer can go into the .dol: both ref_gl and ref_soft compile
+# ref/common and both export GetRefAPI, so linking the pair collides.
+set(XASH_RENDERER "soft" CACHE STRING "renderer to link: gl (opengx) or soft (software rasteriser)")
+set_property(CACHE XASH_RENDERER PROPERTY STRINGS gl soft)
+
+if(XASH_RENDERER STREQUAL "gl")
+	set(XASH_REF_LIB ref_gl)
+	set(XASH_REF_DEFINE XASH_REF_GL_ENABLED=1)
+else()
+	set(XASH_REF_LIB ref_soft)
+	set(XASH_REF_DEFINE XASH_REF_SOFT_ENABLED=1)
+endif()
+message(STATUS "Renderer: ${XASH_REF_LIB}")
+
+file(GLOB REF_GL_SOURCES
+	ref/common/*
+	ref/gl/*
+	)
+add_library(ref_gl STATIC ${REF_GL_SOURCES})
+target_include_directories(ref_gl PUBLIC
+	3rdparty/library_suffix/include
+	ref/common
+	ref/gl
+	common
+	engine
+	engine/common
+	engine/common/imagelib
+	public
+	pm_shared
+	filesystem
+	)
+option(XASH_OGC_TRACE "trace renderer model/texture loading over the gecko" OFF)
+if(XASH_OGC_TRACE)
+	target_compile_definitions(ref_gl PRIVATE -DXASH_OGC_TRACE=1)
+endif()
+target_compile_definitions(ref_gl PRIVATE
+	-DXASH_LOW_MEMORY=${XASH_LOW_MEMORY}
+	-DXASH_STATIC_LIBS=1
+	-DREF_DLL=1
+	# opengx is linked in, so bind pglFoo straight to glFoo instead of
+	# looking every entry point up at runtime
+	-DXASH_GL_STATIC=1
+	)
+target_compile_options(ref_gl PRIVATE -fpermissive -fno-exceptions)
+target_link_libraries(ref_gl public PkgConfig::OPENGL)
 
 file(GLOB REF_SOFT_SOURCES
 	ref/common/*
@@ -96,7 +148,7 @@ target_include_directories(ref_soft PUBLIC
  	filesystem
  	)
  target_compile_definitions(ref_soft PRIVATE
- 	-DXASH_LOW_MEMORY=2
+ 	-DXASH_LOW_MEMORY=${XASH_LOW_MEMORY}
  	-DXASH_STATIC_LIBS=1
  	-DREF_DLL=1
  	# -DXASH_GL_STATIC=1
@@ -150,12 +202,11 @@ target_compile_definitions(xash PUBLIC
 	-DHAVE_VORBIS=0
 	-DHAVE_VORBISFILE=0
 	-DHAVE_OPUS=1
-	-DXASH_LOW_MEMORY=2
+	-DXASH_LOW_MEMORY=${XASH_LOW_MEMORY}
 	-DXASH_SDL=2
 	# -DHAVE_GL=1
 	-DGL_STATIC=1
 	-DXASH_NO_LIBDL=1
-	-DXASH_REF_SOFT_ENABLED=1
 	-DSTATIC_LINKING=1
 	-DXASH_STATIC_LIBS=1
 	-DNO_VGUI=1
@@ -201,7 +252,7 @@ target_include_directories(xash PUBLIC
     # /opt/devkitpro/portlibs/wii/include/GL
 	)
 
-target_link_libraries(xash PUBLIC filesystem_stdio hl cl_dll ref_soft menu
+target_link_libraries(xash PUBLIC filesystem_stdio hl cl_dll ${XASH_REF_LIB} menu
 SDL2::SDL2main BZip2::BZip2 Opus::opus
 library_suffix pthread ${DEPS_LIBRARIES}
 MultiEmulator
@@ -210,6 +261,8 @@ MultiEmulator
 #GLU
 #glut
 )
+target_compile_definitions(xash PUBLIC -D${XASH_REF_DEFINE})
+
 dkp_target_generate_symbol_list(xash)
 ogc_create_dol(xash)
 

@@ -3455,6 +3455,9 @@ void Mod_StudioLoadTextures( model_t *mod, void *data )
 {
 	studiohdr_t	*phdr = (studiohdr_t *)data;
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] Mod_StudioLoadTextures %s ntex=%d\n", mod ? mod->name : "(null)", phdr ? phdr->numtextures : -1 );
+#endif
 	if( !phdr )
 		return;
 

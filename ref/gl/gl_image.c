@@ -974,6 +974,9 @@ upload texture into video memory
 */
 static qboolean GL_UploadTexture( gl_texture_t *tex, rgbdata_t *pic )
 {
+#if XASH_OGC_TRACE
+	printf( "[TRACE] upload>> %s %dx%d\n", tex->name, pic ? pic->width : -1, pic ? pic->height : -1 );
+#endif
 	// dedicated server
 	if( !glw_state.initialized )
 		return true;
@@ -1103,6 +1106,9 @@ static qboolean GL_UploadTexture( gl_texture_t *tex, rgbdata_t *pic )
 	SetBits( tex->flags, TF_IMG_UPLOADED ); // done
 	tex->numMips /= numSides;
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] upload<< %s ok\n", tex->name );
+#endif
 	return true;
 }
 
