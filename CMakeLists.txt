@@ -129,7 +129,7 @@ target_compile_definitions(ref_gl PRIVATE
 	# looking every entry point up at runtime
 	-DXASH_GL_STATIC=1
 	)
-target_compile_options(ref_gl PRIVATE -fpermissive -fno-exceptions)
+target_compile_options(ref_gl PRIVATE -fpermissive -fno-exceptions -fno-strict-aliasing)
 target_link_libraries(ref_gl public PkgConfig::OPENGL)
 
 file(GLOB REF_SOFT_SOURCES
@@ -155,7 +155,7 @@ target_include_directories(ref_soft PUBLIC
  	-DREF_DLL=1
  	# -DXASH_GL_STATIC=1
  	)
- target_compile_options(ref_soft PRIVATE -fpermissive -fno-exceptions) #-msdata=eabi -mno-sdata -G0
+ target_compile_options(ref_soft PRIVATE -fpermissive -fno-exceptions -fno-strict-aliasing) #-msdata=eabi -mno-sdata -G0
  # target_link_options(ref_gl PRIVATE -Wl,-msdata-eabi)
  target_link_libraries(ref_soft public)
 
