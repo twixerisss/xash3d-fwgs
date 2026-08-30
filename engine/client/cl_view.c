@@ -405,6 +405,10 @@ void V_RenderView( void )
 	do
 	{
 		clgame.dllFuncs.pfnCalcRefdef( &rp );
+#if XASH_OGC
+		// after the client has placed the weapon, lean it towards the pointer
+		OGC_ApplyPointerToViewModel( &clgame.viewent );
+#endif
 		V_GetRefParams( &rp, &rvp );
 		V_RefApplyOverview( &rvp );
 		V_ApplyRefUnderwater( &rvp );

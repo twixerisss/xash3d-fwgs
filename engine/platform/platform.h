@@ -118,6 +118,10 @@ void PSVita_InputUpdate( void );
 void OGC_EarlyInit( void );
 void OGC_Init( void );
 void OGC_Shutdown( void );
+void OGC_InputInit( void );
+void OGC_PointerMove( float *pitch, float *yaw );
+void OGC_GetPointer( float *x, float *y );
+void OGC_ApplyPointerToViewModel( struct cl_entity_s *view );
 #endif
 
 #if XASH_DOS
