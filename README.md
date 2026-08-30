@@ -11,6 +11,10 @@ Xash3D FWGS is a heavily modified fork of an original [Xash3D Engine](https://ww
 2) Copy `valve` directory to a folder named `xash3d` in the root of the sd card
 3) Run it via the Homebrew Channel
 
+The menu plays `media/gamestartup.mp3`. Steam installs ship the soundtrack as
+`media/Half-Life01.mp3` and up, with no `gamestartup.mp3` at all, so the menu
+comes up silent until you copy one of them to that name.
+
 ## Build instructions
 The Wii/GC port currently uses cmake to build its binaries. Will integrate it into waf at some point
 
