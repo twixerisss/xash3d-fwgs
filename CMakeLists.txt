@@ -220,6 +220,10 @@ target_compile_definitions(xash PUBLIC
 	# ~25fps; 320x240 costs ~2.6ms and nearly doubles it, and the Wii's video
 	# hardware scales it to the TV for free. Override with width/height in
 	# video.cfg if you would rather have the pixels than the frames.
+	# c0a0 averages ~48fps at this resolution, so capping at 30 leaves enough
+	# headroom that the frame time actually holds steady instead of swinging
+	# between the low 20s and 60.
+	-DDEFAULT_FPS_MAX="30"
 	-DDEFAULT_MODE_WIDTH=320
 	-DDEFAULT_MODE_HEIGHT=240
 	-DXASH_OGC_GECKO=1
