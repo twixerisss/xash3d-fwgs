@@ -48,7 +48,18 @@ typedef int fixed16_t;
 #if XASH_LOW_MEMORY
 	#undef MAX_TEXTURES
 	#undef MAX_DECAL_SURFS
+#if XASH_OGC
+	// 1024 is not enough for Half-Life past the first few chapters: Office
+	// Complex (c1a2b) and "We've Got Hostiles" (c1a3) both exhaust the table
+	// and die with Host_Error: MAX_TEXTURES limit exceeds.
+	//
+	// This table is descriptors only, 312 bytes each - the pixel data sits on
+	// the MEM2 heap - so four times the headroom costs about 1MB of MEM1,
+	// which there is room for.
+	#define MAX_TEXTURES    4096
+#else
 	#define MAX_TEXTURES    1024
+#endif
 	#define MAX_DECAL_SURFS 256
 #endif
 
