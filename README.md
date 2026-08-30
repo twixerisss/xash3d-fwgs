@@ -61,6 +61,21 @@ The heap lives in MEM2 (`MALLOC_MEM2` in `sys_ogc.c`). MEM1 holds the
 executable, and a GL build leaves only a few MB of it - not enough to load a
 map.
 
+### Performance notes
+
+The devkitPro toolchain puts `-O2 -DNDEBUG` on every target, but the `xash`
+target then appends `-Og -g3 -fno-omit-frame-pointer`, and later flags win in
+GCC. So the engine core - the frame loop, the client, the server, model and
+sound loading - is the only part of the build compiled unoptimised, while the
+renderer and game code are not.
+
+Fixing that looks like free performance and it is not, yet: with the engine at
+-O2 the renderer hangs during map setup, right after "Map sample size" - but
+only when no USB Gecko listener is attached. Attach the capture tool and the
+same binary plays fine. That is a timing-dependent fault the debug channel
+masks, so the `-Og` stays until someone finds it. It is probably worth more
+than any other single change here.
+
 Two known bugs, both of which look like the same thing from different angles:
 
 * `XASH_RENDERER=gl` initialises, loads a map and precaches all of c0a0, then
