@@ -69,12 +69,27 @@ GCC. So the engine core - the frame loop, the client, the server, model and
 sound loading - is the only part of the build compiled unoptimised, while the
 renderer and game code are not.
 
-Fixing that looks like free performance and it is not, yet: with the engine at
--O2 the renderer hangs during map setup, right after "Map sample size" - but
-only when no USB Gecko listener is attached. Attach the capture tool and the
-same binary plays fine. That is a timing-dependent fault the debug channel
-masks, so the `-Og` stays until someone finds it. It is probably worth more
-than any other single change here.
+That is fixed, except for one file. Switching the whole target to -O2 hangs
+on map load; bisecting the translation units narrows it to exactly
+`engine/common/host.c`, which is now the only thing still built `-Og`. The
+symptom matches `Host_FilterTime` never returning true, so `Host_Frame` bails
+before rendering - the engine stays alive and logging while nothing reaches
+the screen. Worth finding properly; the rest of the engine is optimised now.
+
+Measured on the c0a0 intro, counting dumped frames over a fixed wall-clock
+window:
+
+| change | avg fps |
+| --- | --- |
+| 640x480, whole engine -Og | 25.3 |
+| 320x240 | 47.2 |
+| 320x240, engine -O2 except host.c | 49.8 |
+| 320x240, 3D rendering disabled (ceiling) | 55.0 |
+
+`vid_scale` is not the way to lower the render resolution - `ref_soft` does
+not implement it and silently ignores the request. Change the video mode
+(`width`/`height`) instead. 512x384 is not a real mode here and falls back to
+640x480.
 
 Two known bugs, both of which look like the same thing from different angles:
 
