@@ -216,6 +216,12 @@ target_compile_definitions(xash PUBLIC
 	-DXASH_ENABLE_MAIN=1
 	-DFRAME_POINTERS=1
 	-DBIGENDIAN=1
+	# 640x480 spends ~21ms a frame in the software rasteriser and lands at
+	# ~25fps; 320x240 costs ~2.6ms and nearly doubles it, and the Wii's video
+	# hardware scales it to the TV for free. Override with width/height in
+	# video.cfg if you would rather have the pixels than the frames.
+	-DDEFAULT_MODE_WIDTH=320
+	-DDEFAULT_MODE_HEIGHT=240
 	-DXASH_OGC_GECKO=1
 	-DXASH_OGC_GECKO_WAIT=15 # seconds to wait for a gecko listener; dev builds only
 	#-DUSE_FS_SEARCH_FOR_LOOKUPS=0
