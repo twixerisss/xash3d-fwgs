@@ -274,11 +274,26 @@ target_compile_definitions(xash PUBLIC -D${XASH_REF_DEFINE})
 dkp_target_generate_symbol_list(xash)
 ogc_create_dol(xash)
 
+# The toolchain compiles everything -O2. This target used to append -Og, and
+# later flags win, so the whole engine core was built unoptimised while the
+# renderer and game code were not.
+#
+# Only one translation unit actually needs it. Bisected by forcing units back
+# to -Og one group at a time: with host.c at -O2 and everything else at -Og
+# the game still hangs, and with host.c alone at -Og and all 154 others at
+# -O2 it runs. The symptom fits Host_FilterTime always returning false -
+# Host_Frame then bails before rendering, so the engine stays alive and
+# responsive while almost nothing reaches the screen.
+#
+# Worth roughly 5% on c0a0 (47.2 -> 49.8fps). Fixing host.c properly would
+# let this go away entirely.
+set_source_files_properties(
+	${CMAKE_CURRENT_SOURCE_DIR}/engine/common/host.c
+	PROPERTIES COMPILE_OPTIONS "-Og"
+)
+
 target_compile_options(xash PUBLIC
 	-std=gnu11
-	-Og
-	-g3
-	-fno-omit-frame-pointer
 	-fno-strict-aliasing
 	-fno-stack-protector
 	-ffunction-sections
