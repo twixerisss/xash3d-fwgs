@@ -6,6 +6,12 @@ Xash3D FWGS is a heavily modified fork of an original [Xash3D Engine](https://ww
 
 ## Installation & Running
 
+**New to this? Read [Documentation/wii-setup.md](Documentation/wii-setup.md)** -
+a step-by-step guide covering the SD card layout, the two things a PC copy of
+Half-Life gets wrong, the controls, and what does and does not work yet. The
+short version follows.
+
+
 0) Rename `xash.dol` to `boot.dol` if it was compiled
 1) Move the `boot.dol` file to some directory inside the `apps` folder
 2) Copy `valve` directory to a folder named `xash3d` in the root of the sd card
