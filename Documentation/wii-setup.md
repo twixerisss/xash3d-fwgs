@@ -41,7 +41,13 @@ steamapps/common/Half-Life/valve
 
 ## Step 1 — Get the engine
 
-There are no published builds yet, so build it yourself:
+Download `xash3d-wii-v0.1.0.zip` from the
+[releases page](https://github.com/twixerisss/xash3d-fwgs/releases) and unzip
+it to the root of your SD card — it already contains `apps/xash3d/` laid out
+for the Homebrew Channel, so you can skip to
+[step 2](#step-2--set-up-the-sd-card) and just add your game data.
+
+To build it yourself instead:
 
 ```sh
 git clone --recursive https://github.com/twixerisss/xash3d-fwgs
