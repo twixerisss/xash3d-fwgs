@@ -49,9 +49,17 @@ void Platform_ShellExecute( const char *path, const char *parms )
 #define XASH_OGC_GECKO_CHANNEL 1 // EXI channel 1 == memory card slot B
 #endif
 
+static qboolean ogc_gecko_present;
+
 static ssize_t OGC_GeckoWrite( struct _reent *r, void *fd, const char *ptr, size_t len )
 {
-	usb_sendbuffer_safe( XASH_OGC_GECKO_CHANNEL, ptr, len );
+	// With nothing on the other end each write still goes through the EXI
+	// transaction and costs real time, and the engine logs constantly - on a
+	// console with no gecko plugged in, which is every normal one, that alone
+	// is enough to stall the game. Probed once at startup.
+	if( ogc_gecko_present )
+		usb_sendbuffer_safe( XASH_OGC_GECKO_CHANNEL, ptr, len );
+
 	return len;
 }
 
@@ -97,6 +105,8 @@ void OGC_EarlyInit( void )
 	// libogc 3.1 no longer points stdout at the gecko console, so hook
 	// newlib's device table ourselves. Everything the engine prints
 	// (Con_Printf, Sys_Error, plain printf) goes out the wire from here on.
+	ogc_gecko_present = usb_isgeckoalive( XASH_OGC_GECKO_CHANNEL );
+
 	devoptab_list[STD_OUT] = &ogc_gecko_out;
 	devoptab_list[STD_ERR] = &ogc_gecko_out;
 	setvbuf( stdout, NULL, _IONBF, 0 );

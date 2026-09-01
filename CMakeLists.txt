@@ -117,6 +117,14 @@ target_include_directories(ref_gl PUBLIC
 	pm_shared
 	filesystem
 	)
+# Hold the boot until a gecko listener attaches, so nothing printed early is
+# lost. Never for a shipping build: with no gecko on the other end this just
+# stalls every launch.
+option(XASH_OGC_GECKO_WAIT "wait at boot for a USB Gecko listener" OFF)
+if(XASH_OGC_GECKO_WAIT)
+	target_compile_definitions(xash PUBLIC -DXASH_OGC_GECKO_WAIT=15)
+endif()
+
 option(XASH_OGC_TRACE "trace renderer model/texture loading over the gecko" OFF)
 if(XASH_OGC_TRACE)
 	target_compile_definitions(ref_gl PRIVATE -DXASH_OGC_TRACE=1)
@@ -227,7 +235,6 @@ target_compile_definitions(xash PUBLIC
 	-DDEFAULT_MODE_WIDTH=320
 	-DDEFAULT_MODE_HEIGHT=240
 	-DXASH_OGC_GECKO=1
-	-DXASH_OGC_GECKO_WAIT=15 # seconds to wait for a gecko listener; dev builds only
 	#-DUSE_FS_SEARCH_FOR_LOOKUPS=0
 
 
