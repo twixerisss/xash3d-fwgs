@@ -24,6 +24,7 @@ GNU General Public License for more details.
 #include <SDL.h>
 #include <gccore.h>
 #include <ogcsys.h>
+#include <wiiuse/wpad.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -126,6 +127,13 @@ void OGC_Init( void )
 	// and this is the only way to see which one did
 	printf( "OGC_Init: WPAD\n" );
 	WPAD_Init();
+
+	// SDL only ever reads the remote (WPAD_Data / WPAD_ReadPending); it never
+	// configures it. The IR sensor reports nothing at all unless the data
+	// format asks for it, so without this the pointer is dead: no cursor in
+	// the menu and no aiming in game. The coordinate space is set later, in
+	// OGC_InputInit, once the video mode is known.
+	WPAD_SetDataFormat( WPAD_CHAN_ALL, WPAD_FMT_BTNS_ACC_IR );
 
 	printf( "OGC_Init: USB keyboard\n" );
 	KEYBOARD_Init( NULL );

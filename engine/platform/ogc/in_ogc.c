@@ -19,6 +19,7 @@ GNU General Public License for more details.
 #include "common.h"
 #include "client.h"
 #include "input.h"
+#include <wiiuse/wpad.h>
 
 /*
 The remote's IR sensor arrives from SDL as an absolute pointer, not as
@@ -45,6 +46,12 @@ static vec2_t ogc_pointer;
 
 void OGC_InputInit( void )
 {
+	// The IR coordinates come back in whatever space we ask for, and SDL
+	// reports them straight through as absolute mouse position, so this has
+	// to match the screen the engine thinks it is drawing to.
+	if( refState.width > 0 && refState.height > 0 )
+		WPAD_SetVRes( WPAD_CHAN_ALL, refState.width, refState.height );
+
 	Cvar_RegisterVariable( &wii_ir );
 	Cvar_RegisterVariable( &wii_ir_deadzone );
 	Cvar_RegisterVariable( &wii_ir_yawspeed );
