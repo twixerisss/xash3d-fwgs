@@ -41,9 +41,7 @@ steamapps/common/Half-Life/valve
 
 ## Step 1 — Get the engine
 
-Either download `boot.dol` from the
-[releases page](https://github.com/twixerisss/xash3d-fwgs/releases), or build
-it yourself:
+There are no published builds yet, so build it yourself:
 
 ```sh
 git clone --recursive https://github.com/twixerisss/xash3d-fwgs
