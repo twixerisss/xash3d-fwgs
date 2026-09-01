@@ -6,13 +6,13 @@ A step-by-step guide to getting this port running on a real console.
 
 ## Read this first
 
-**This has never been run on real hardware.** Everything below has been
-developed and tested under the Dolphin emulator. It gets through the opening
-chapters cleanly there, but the first person to put it on an actual Wii is
-doing something nobody has done yet, and it may simply not boot.
+**It runs on a real Wii.** Players have booted it on actual hardware and it
+plays. Most of the development and measurement was done under the Dolphin
+emulator though, so anything below about frame rates and behaviour comes from
+there unless stated otherwise.
 
-It also does not run the whole game yet. See [Known
-issues](#known-issues) before you spend an evening on it.
+It does not run the whole game yet. See [Known issues](#known-issues) before
+you spend an evening on it.
 
 Nothing here can damage your console — homebrew launched from the Homebrew
 Channel runs and exits like any other app, and this port only ever reads from
@@ -208,7 +208,8 @@ faster; it makes the frame time less consistent, which feels worse.
 
 Being straight with you about where this actually is:
 
-- **Never tested on real hardware.** All of the above is from Dolphin.
+- **Only lightly tested on real hardware.** It boots and plays there, but the
+  bulk of the testing behind the notes below was done in Dolphin.
 - **Only the opening chapters are verified.** Every map through "We've Got
   Hostiles" has been checked to load and reach gameplay. Everything from Blast
   Pit onwards is untested — roughly three quarters of the game.
