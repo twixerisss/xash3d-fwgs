@@ -117,6 +117,50 @@ void OGC_EarlyInit( void )
 
 volatile int g_ogc_mark = 0;
 
+#if XASH_OGC_STACKWATCH
+/*
+The engine runs on libogc's main thread, whose stack is a fixed 128KB array in
+.bss. Almost all of .bss sits below it, so a stack that runs off the bottom
+does not fault, it quietly writes over engine globals. Paint the unused part
+with a known value at startup and see how much of it gets used.
+*/
+#define OGC_STACK_PAINT	0x19000		// 100KB, comfortably inside the 128KB
+#define OGC_STACK_MAGIC	0xA5A5A5A5
+
+static u32 *ogc_stack_top, *ogc_stack_bottom;
+
+static void OGC_StackPaint( void )
+{
+	volatile u32 probe = 0;
+	u32 *sp = (u32 *)((u32)&probe & ~3u );
+	u32 *p;
+
+	ogc_stack_top    = sp;
+	ogc_stack_bottom = sp - ( OGC_STACK_PAINT / 4 );
+
+	// leave a margin below the current frame so this function's own locals
+	// and whatever it returns into are untouched
+	for( p = ogc_stack_bottom; p < sp - 32; p++ )
+		*p = OGC_STACK_MAGIC;
+}
+
+u32 OGC_StackUsed( void )
+{
+	u32 *p;
+
+	if( !ogc_stack_bottom )
+		return 0;
+
+	for( p = ogc_stack_bottom; p < ogc_stack_top; p++ )
+	{
+		if( *p != OGC_STACK_MAGIC )
+			break;
+	}
+
+	return (u32)(( ogc_stack_top - p ) * 4 );
+}
+#endif
+
 #if XASH_OGC_MONITOR
 /*
 A separate thread so progress can be reported without touching the main
@@ -134,12 +178,20 @@ static void *OGC_MonitorThread( void *arg )
 	for( ;; )
 	{
 		usleep( 300000 );
+#if XASH_OGC_STACKWATCH
+		{
+			u32 used = OGC_StackUsed();
+
+			printf( "[STACK] high water %u bytes of %u painted%s\n",
+				used, (u32)OGC_STACK_PAINT,
+				used >= OGC_STACK_PAINT - 64 ? " (SATURATED)" : "" );
+		}
+#endif
 		if( g_ogc_mark != last )
 		{
 			last = g_ogc_mark;
 			printf( "[MARK] %d\n", last );
 		}
-		else printf( "[MARK] %d (stuck)\n", last );
 	}
 	return NULL;
 }
@@ -147,6 +199,9 @@ static void *OGC_MonitorThread( void *arg )
 
 void OGC_Init( void )
 {
+#if XASH_OGC_STACKWATCH
+	OGC_StackPaint();
+#endif
 #if XASH_OGC_MONITOR
 	// higher priority than the main thread so it still runs if main spins
 	LWP_CreateThread( &ogc_monitor_thread, OGC_MonitorThread, NULL,
