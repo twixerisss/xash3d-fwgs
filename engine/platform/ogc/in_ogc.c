@@ -42,7 +42,12 @@ static CVAR_DEFINE_AUTO( wii_ir_pitchspeed, "160", FCVAR_ARCHIVE, "degrees per s
 static CVAR_DEFINE_AUTO( wii_ir_gunsway, "7", FCVAR_ARCHIVE, "degrees the weapon leans towards the pointer" );
 static CVAR_DEFINE_AUTO( wii_ir_cursor, "1", FCVAR_ARCHIVE, "show the pointer in game as the aiming reticle" );
 static CVAR_DEFINE_AUTO( wii_buttons, "1", FCVAR_ARCHIVE, "read the remote and nunchuk buttons straight from WPAD" );
-static CVAR_DEFINE_AUTO( wii_showinput, "0", 0, "print raw controller state whenever it changes" );
+#ifdef XASH_OGC_INPUTTEST
+#define WII_SHOWINPUT_DEFAULT "1"	// input test build: on with nothing to configure
+#else
+#define WII_SHOWINPUT_DEFAULT "0"
+#endif
+static CVAR_DEFINE_AUTO( wii_showinput, WII_SHOWINPUT_DEFAULT, 0, "print raw controller state whenever it changes" );
 
 /*
 SDL synthesises a gamepad mapping for whatever it finds on the WPAD channel,
