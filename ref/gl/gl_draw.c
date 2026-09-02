@@ -172,6 +172,13 @@ void R_Set2DMode( qboolean enable )
 		if( glConfig.max_multisamples > 1 && gl_msaa.value )
 			pglDisable( GL_MULTISAMPLE_ARB );
 
+#if XASH_OGC
+		// Nothing drawn in 2D wants fogging. If the underwater fog is still
+		// on when the HUD goes down, the whole interface comes out blue along
+		// with the world, which is what it did after surfacing.
+		pglDisable( GL_FOG );
+#endif
+
 		glState.in2DMode = true;
 		RI.currententity = NULL;
 		RI.currentmodel = NULL;
@@ -181,6 +188,12 @@ void R_Set2DMode( qboolean enable )
 		pglDepthMask( GL_TRUE );
 		pglEnable( GL_DEPTH_TEST );
 		glState.in2DMode = false;
+
+#if XASH_OGC
+		// put it back the way the world pass expects to find it
+		if( glState.isFogEnabled && gl_fog.value )
+			pglEnable( GL_FOG );
+#endif
 
 		pglMatrixMode( GL_PROJECTION );
 		GL_LoadMatrix( RI.projectionMatrix );

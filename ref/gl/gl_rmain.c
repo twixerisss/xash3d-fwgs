@@ -693,6 +693,18 @@ static void R_CheckFog( void )
 				pglDisable( GL_FOG );
 			}
 		}
+#if XASH_OGC
+		// The clear above only fires on the one frame the water level drops
+		// away from 3. Miss it and the underwater fog stays on for good, so
+		// surfacing left the world and the interface blue until the map
+		// changed. Being out of the water is the condition that matters, so
+		// act on that rather than on catching a single transition.
+		else if( !RI.fogCustom && glState.isFogEnabled )
+		{
+			glState.isFogEnabled = false;
+			pglDisable( GL_FOG );
+		}
+#endif
 		return;
 	}
 

@@ -307,6 +307,16 @@ void SDLash_HandleGameControllerEvent( SDL_Event *ev )
 		if( Cvar_VariableValue( "wii_showinput" ))
 			Con_Printf( "^3[SDLBTN]^7 raw=%d state=%d key=%d\n", x, (int)ev->cbutton.state,
 				( x >= 0 && x < (int)ARRAYSIZE( g_button_mapping )) ? g_button_mapping[x] : -1 );
+
+		// The remote is read straight from WPAD, and SDL reports the same
+		// presses again through its own guess at the pad layout. They do not
+		// agree on which button is which, so one physical press arrived as two
+		// different engine keys: pulling the trigger fired and reloaded at the
+		// same time, and the reload cut the firing short. Take the buttons
+		// from one place only. Axes stay, that is the nunchuk stick, and so
+		// does the mouse, that is the pointer.
+		if( Cvar_VariableValue( "wii_buttons" ))
+			break;
 #endif
 		if( x >= 0 && x < ARRAYSIZE( g_button_mapping ))
 			Key_Event( g_button_mapping[x], ev->cbutton.state );

@@ -15,6 +15,7 @@ GNU General Public License for more details.
 
 #include <stdarg.h>
 #include "gl_local.h"
+#include <stdlib.h>
 #if defined( XASH_OGC_TEXTRACE ) || defined( XASH_OGC_TEXDELAY )
 #include <ogc/system.h>
 #include <unistd.h>
@@ -921,6 +922,47 @@ static void GL_TextureImageRAW( gl_texture_t *tex, GLint side, GLint level, GLin
 		dataType = GL_FLOAT;
 	else
 		dataType = GL_UNSIGNED_BYTE;
+
+#if XASH_OGC
+	// opengx reads the pixels at the stride the internal format implies. The
+	// single channel formats are the one case that cannot be fixed by
+	// widening the format instead: single channel covers every grey corridor
+	// texture in Black Mesa, and making those RGBA runs the heap out during a
+	// map load. So narrow the data to match the format rather than the other
+	// way round. The image is greyscale by the engine's own reckoning, which
+	// is why it picked this format, so one channel loses nothing - and it
+	// uploads a quarter of the bytes.
+	if(( tex->format == GL_LUMINANCE8 || tex->format == GL_INTENSITY8 )
+		&& ( inFormat == GL_RGBA || inFormat == GL_BGRA ) && data != NULL )
+	{
+		static byte *lum;
+		static size_t lumsize;
+		size_t need = (size_t)width * height * depth;
+
+		if( need > lumsize )
+		{
+			byte *grown = realloc( lum, need );
+
+			if( grown )
+			{
+				lum = grown;
+				lumsize = need;
+			}
+		}
+
+		if( lum && need <= lumsize )
+		{
+			const byte *src = data;
+			size_t i;
+
+			for( i = 0; i < need; i++ )
+				lum[i] = src[i * 4];
+
+			data = lum;
+			inFormat = GL_LUMINANCE;
+		}
+	}
+#endif
 
 	#if XASH_OGC
 	if( tex->target == GL_TEXTURE_CUBE_MAP_ARB )
