@@ -1295,6 +1295,35 @@ int EXPORT Host_Main( int argc, char **argv, const char *progname, int bChangeGa
 			Cbuf_Execute();
 		}
 
+#if XASH_OGC
+		// A config.cfg copied from a PC install starts with unbindall and then
+		// binds only keyboard and mouse keys, which leaves every controller
+		// key with nothing on it. The port reads the remote correctly and the
+		// key events fire, they just land on unbound keys and nothing happens.
+		//
+		// There is no keyboard here, so put the controller bindings back after
+		// the config has had its say. userconfig.cfg runs after this and still
+		// wins, so anyone who wants their own layout keeps it.
+		Cbuf_AddText(
+			"bind A_BUTTON \"+jump\"\n"
+			"bind B_BUTTON \"+use\"\n"
+			"bind X_BUTTON \"+reload\"\n"
+			"bind Y_BUTTON \"impulse 100\"\n"
+			"bind L1_BUTTON \"+duck\"\n"
+			"bind R1_BUTTON \"+attack\"\n"
+			"bind L2_BUTTON \"+speed\"\n"
+			"bind R2_BUTTON \"+attack2\"\n"
+			"bind DPAD_UP \"+reload\"\n"
+			"bind DPAD_DOWN \"lastinv\"\n"
+			"bind DPAD_LEFT \"invprev\"\n"
+			"bind DPAD_RIGHT \"invnext\"\n"
+			"bind BACK \"pause\"\n"
+			"bind START \"cancelselect\"\n"
+			"bind MOUSE1 \"+attack\"\n"
+			"bind MOUSE2 \"+attack2\"\n" );
+		Cbuf_Execute();
+#endif
+
 		// exec all files from userconfig.d
 		Cbuf_AddText( "userconfigd\n" );
 		Cbuf_Execute();
