@@ -239,8 +239,10 @@ target_compile_definitions(xash PUBLIC
 
 	-DDEBUG_LOOKUPS_COUNT=1
 	-D_EXI_DEBUG=1
-	-D_DEBUG=1
-	-DDEBUG=1
+	# _DEBUG gates debug-only warnings, and one of them fires on almost every
+	# entity update: "Delta_ClampIntegerField: field eflags overflowed". On a
+	# console that lands in the notify area over the top of the game and does
+	# not stop. Nothing here needs it, so keep it out of shipping builds.
 	)
 
 pkg_check_modules(DEPS REQUIRED sdl2 zlib) #opengl bzip2 #freetype2 #zlib
