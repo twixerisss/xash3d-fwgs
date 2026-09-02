@@ -29,14 +29,14 @@ A nunchuk is required for this scheme: the stick is how you move.
 | Button | Action |
 | --- | --- |
 | **B** (trigger) | Fire |
-| **A** | Menu select, and secondary fire in game |
-| **Nunchuk C** | Use / interact |
-| **Nunchuk Z** | Jump |
-| **D-pad down** | Crouch |
-| **D-pad up** | Reload |
-| **D-pad left / right** | Previous / next weapon |
+| **A** | Jump |
+| **Nunchuk C** | Use / interact, and reload |
+| **Nunchuk Z** | Crouch |
 | **1** | Flashlight |
 | **2** | Secondary fire |
+| **D-pad up** | Reload |
+| **D-pad down** | Last weapon used |
+| **D-pad left / right** | Previous / next weapon |
 | **-** | Walk (hold) |
 | **+** | Pause |
 | **Home** | Menu |

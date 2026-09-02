@@ -69,12 +69,17 @@ and rebindable from Options -> Controls instead of hidden in a config file.
 */
 static const ogc_btn_t ogc_map_wiimote[] =
 {
-	{ WPAD_NUNCHUK_BUTTON_C, K_B_BUTTON    },	// +use
-	{ WPAD_NUNCHUK_BUTTON_Z, K_A_BUTTON    },	// +jump
+	// The trigger and A are read here rather than left to SDL. SDL does
+	// deliver them, but not as anything that lands on fire or jump, which is
+	// why neither had a binding at all.
+	{ WPAD_BUTTON_B,         K_R1_BUTTON   },	// +attack
+	{ WPAD_BUTTON_A,         K_A_BUTTON    },	// +jump
+	{ WPAD_NUNCHUK_BUTTON_C, K_B_BUTTON    },	// +use and reload together
+	{ WPAD_NUNCHUK_BUTTON_Z, K_L1_BUTTON   },	// +duck
 	{ WPAD_BUTTON_1,         K_Y_BUTTON    },	// flashlight
 	{ WPAD_BUTTON_2,         K_R2_BUTTON   },	// +attack2
 	{ WPAD_BUTTON_UP,        K_X_BUTTON    },	// +reload
-	{ WPAD_BUTTON_DOWN,      K_L1_BUTTON   },	// +duck
+	{ WPAD_BUTTON_DOWN,      K_DPAD_DOWN   },	// lastinv
 	{ WPAD_BUTTON_LEFT,      K_DPAD_LEFT   },	// invprev
 	{ WPAD_BUTTON_RIGHT,     K_DPAD_RIGHT  },	// invnext
 	{ WPAD_BUTTON_MINUS,     K_L2_BUTTON   },	// +speed, walk

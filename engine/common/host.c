@@ -1304,9 +1304,15 @@ int EXPORT Host_Main( int argc, char **argv, const char *progname, int bChangeGa
 		// There is no keyboard here, so put the controller bindings back after
 		// the config has had its say. userconfig.cfg runs after this and still
 		// wins, so anyone who wants their own layout keeps it.
+		// C does use and reload together: there are not enough buttons on a
+		// remote and nunchuk to give them one each, and the two rarely want
+		// pressing at the same moment. An alias keeps the release half of
+		// both +commands working.
 		Cbuf_AddText(
+			"alias +usereload \"+use; +reload\"\n"
+			"alias -usereload \"-use; -reload\"\n"
 			"bind A_BUTTON \"+jump\"\n"
-			"bind B_BUTTON \"+use\"\n"
+			"bind B_BUTTON \"+usereload\"\n"
 			"bind X_BUTTON \"+reload\"\n"
 			"bind Y_BUTTON \"impulse 100\"\n"
 			"bind L1_BUTTON \"+duck\"\n"
