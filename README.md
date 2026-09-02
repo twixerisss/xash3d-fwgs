@@ -17,6 +17,31 @@ short version follows.
 2) Copy `valve` directory to a folder named `xash3d` in the root of the sd card
 3) Run it via the Homebrew Channel
 
+## Controls
+
+A nunchuk is required - the stick is how you move.
+
+| Button | Action |
+| --- | --- |
+| **B** (trigger) | Fire |
+| **A** | Menu select, and secondary fire in game |
+| **Nunchuk C** | Use / interact |
+| **Nunchuk Z** | Jump |
+| **D-pad down** | Crouch |
+| **D-pad up** | Reload |
+| **D-pad left / right** | Previous / next weapon |
+| **1** | Flashlight |
+| **2** | Secondary fire |
+| **-** | Walk (hold) |
+| **+** | Pause |
+| **Home** | Menu |
+
+Aiming uses the remote's pointer. Point near the middle of the screen and only
+the weapon moves, which keeps fine aiming steady; point towards an edge and the
+view turns, faster the further out you go. Shots follow the pointer rather than
+the camera. All of it is rebindable from Options -> Controls, and the aiming
+feel is tunable with `wii_ir_deadzone`, `wii_ir_yawspeed` and `wii_ir_pitchspeed`.
+
 The menu plays `media/gamestartup.mp3`. Steam installs ship the soundtrack as
 `media/Half-Life01.mp3` and up, with no `gamestartup.mp3` at all, so the menu
 comes up silent until you copy one of them to that name.

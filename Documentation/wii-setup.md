@@ -17,7 +17,7 @@ still missing is the hardware renderer, so the game runs on the software
 rasteriser at 320x240. See [Known issues](#known-issues) before you spend an
 evening on it.
 
-Nothing here can damage your console — homebrew launched from the Homebrew
+Nothing here can damage your console. Homebrew launched from the Homebrew
 Channel runs and exits like any other app, and this port only ever reads from
 your SD card, apart from writing its own config files. But go in expecting a
 work in progress, not a finished game.
@@ -30,7 +30,7 @@ work in progress, not a finished game.
 | --- | --- |
 | A Wii | Any model, with the [Homebrew Channel](https://wiibrew.org/wiki/Homebrew_Channel) already installed |
 | An SD card | FAT32 formatted. The game data is about 600MB, so 2GB or larger |
-| Half-Life | **Your own copy.** No game data is distributed here — you supply the `valve` folder from an installation you own |
+| Half-Life | **Your own copy.** No game data is distributed here, you supply the `valve` folder from an installation you own |
 | A Nunchuk | Required. The stick is how you move; there is no alternative control scheme yet |
 
 Both the Steam and the original WON releases of Half-Life work. If you have it
@@ -42,11 +42,11 @@ steamapps/common/Half-Life/valve
 
 ---
 
-## Step 1 — Get the engine
+## Step 1: Get the engine
 
 Download `xash3d-wii-v0.1.0.zip` from the
 [releases page](https://github.com/twixerisss/xash3d-fwgs/releases) and unzip
-it to the root of your SD card — it already contains `apps/xash3d/` laid out
+it to the root of your SD card, it already contains `apps/xash3d/` laid out
 for the Homebrew Channel, so you can skip to
 [step 2](#step-2--set-up-the-sd-card) and just add your game data.
 
@@ -60,7 +60,7 @@ cd xash3d-fwgs
 ./build_wii.sh
 ```
 
-All three repositories must sit **next to each other** in the same directory —
+All three repositories must sit **next to each other** in the same directory:
 the build reads the game code and menu from the other two. You will also need
 devkitPro with these packages:
 
@@ -72,7 +72,7 @@ The result is `build/xash.dol`.
 
 ---
 
-## Step 2 — Set up the SD card
+## Step 2: Set up the SD card
 
 There is a script that does the whole thing:
 
@@ -105,7 +105,7 @@ Two details that are easy to miss:
 
 ---
 
-## Step 3 — Two things your Half-Life copy will get wrong
+## Step 3: Two things your Half-Life copy will get wrong
 
 Both of these come from the PC version and will bite you otherwise.
 
@@ -132,7 +132,7 @@ sed -i '' '/fps_max/d' valve/config.cfg
 
 ---
 
-## Step 4 — Run it
+## Step 4: Run it
 
 Put the card in the Wii, open the Homebrew Channel, and launch Xash3D.
 
@@ -147,7 +147,7 @@ Aiming works the way console shooters do, rather than as a mouse pointer.
 
 - **Point near the middle of the screen** and the view stays still. Only the
   weapon leans towards where you are pointing. This is what makes fine aiming
-  steady — small hand movements do not drag the whole world with them.
+  steady, small hand movements do not drag the whole world with them.
 - **Point towards an edge** and the view turns, faster the further out you
   point. You swing the camera by pushing outwards and stop by bringing the
   pointer back to the middle.
@@ -162,7 +162,7 @@ Aiming works the way console shooters do, rather than as a mouse pointer.
 | --- | --- |
 | **B** (trigger) | Fire |
 | **A** | Menu select, and secondary fire in game |
-| **Nunchuk C** | **Use / interact** — doors, buttons, ladders, healthchargers |
+| **Nunchuk C** | **Use / interact**: doors, buttons, ladders, healthchargers |
 | **Nunchuk Z** | Jump |
 | **D-pad down** | Crouch |
 | **D-pad up** | Reload |
@@ -209,7 +209,7 @@ If it feels sluggish to turn around, raise `wii_ir_yawspeed`.
 ### Resolution and frame rate
 
 The port renders at 320×240 and the Wii's video hardware scales that to your
-TV. That is not an arbitrary choice — the software renderer draws every pixel
+TV. That is not an arbitrary choice, the software renderer draws every pixel
 on the CPU, and it is the resolution that lets the game hold a steady 30fps.
 
 To change it, edit `valve/video.cfg`:
@@ -225,7 +225,7 @@ What actually works, measured on the opening chapter:
 | --- | --- |
 | **320×240** | ~48fps uncapped, holds 30 comfortably. The default |
 | 640×240 | ~28fps capped. Twice the horizontal detail, but drops frames more often |
-| 640×480 | ~24fps. **Cannot hold 30**, and no amount of tuning changes that — the renderer alone needs more than the whole frame budget |
+| 640×480 | ~24fps. **Cannot hold 30**, and no amount of tuning changes that, the renderer alone needs more than the whole frame budget |
 | 512×384 | Not a real mode on this hardware. Silently falls back to 640×480 |
 
 `fps_max` sets the cap and defaults to `30`. Raising it does not make the game
