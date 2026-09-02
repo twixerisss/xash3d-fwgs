@@ -199,8 +199,14 @@ void OGC_ButtonsFrame( void )
 	if( !wii_buttons.value )
 		return;
 
-	// WPAD and PAD are not scanned here - SDL already does that every frame to
-	// produce the pointer motion, and scanning twice would race it.
+	// WPAD_ButtonsHeld reads the buffer WPAD_ScanPads fills, and SDL never
+	// calls it: it takes the remote through WPAD_ReadPending and WPAD_Data
+	// instead, which leaves that buffer untouched. Without this the reads
+	// below always come back empty and no remote button does anything.
+	//
+	// PAD is the other way round - SDL does call PAD_ScanPads every frame, so
+	// scanning it again here would only race it.
+	WPAD_ScanPads();
 	if( WPAD_Probe( WPAD_CHAN_0, &type ) == WPAD_ERR_NONE && type == WPAD_EXP_CLASSIC )
 	{
 		OGC_EmitButtons( ogc_map_classic, ARRAYSIZE( ogc_map_classic ),

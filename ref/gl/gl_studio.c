@@ -165,6 +165,16 @@ void R_StudioInit( void )
 	gEngfuncs.Cvar_FullSet( "r_studio_drawelements", "0", FCVAR_READ_ONLY );
 #endif
 
+#if XASH_OGC
+	// R_StudioDrawArrays is compiled out entirely on this platform - opengx
+	// has no vertex array path - so the whole body of it does nothing. The
+	// cvar still defaulted to on, which sent every studio model down that
+	// dead branch and drew none of them: no NPCs, no weapon in your hands,
+	// though they were all still there to talk to and shoot. Take the
+	// immediate mode path instead, which is implemented.
+	gEngfuncs.Cvar_FullSet( "r_studio_drawelements", "0", FCVAR_READ_ONLY );
+#endif
+
 	Matrix3x4_LoadIdentity( g_studio.rotationmatrix );
 
 	g_studio.interpolate = true;
