@@ -217,13 +217,16 @@ void OGC_ButtonsFrame( void )
 
 	if( wii_showinput.value )
 	{
-		// Report whatever the hardware is actually giving us, so a real Wii
-		// can answer what Dolphin cannot: whether these reads see anything.
+		// Print on change AND on a timer. Change-only was useless: if the
+		// reads are dead the value never changes, so it spoke once during the
+		// loading screen and then never again, which looks exactly like the
+		// diagnostic not running at all.
 		static u32 last_w = 0xdeadbeef, last_p = 0xdeadbeef;
+		static int tick;
 		u32 w = WPAD_ButtonsHeld( WPAD_CHAN_0 );
 		u32 pd = (u32)PAD_ButtonsHeld( PAD_CHAN0 );
 
-		if( w != last_w || pd != last_p )
+		if( w != last_w || pd != last_p || ( tick % 90 ) == 0 )
 		{
 			u32 t = 0xffffffff;
 			s32 probe = WPAD_Probe( WPAD_CHAN_0, &t );
@@ -232,7 +235,9 @@ void OGC_ButtonsFrame( void )
 			Con_Printf( "^3[INPUT]^7 wpad=%08x pad=%04x probe=%d exp=%u\n",
 				(unsigned)w, (unsigned)pd, (int)probe, (unsigned)t );
 		}
+		tick++;
 	}
+
 	if( WPAD_Probe( WPAD_CHAN_0, &type ) == WPAD_ERR_NONE && type == WPAD_EXP_CLASSIC )
 	{
 		OGC_EmitButtons( ogc_map_classic, ARRAYSIZE( ogc_map_classic ),
