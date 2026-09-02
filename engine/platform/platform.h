@@ -127,6 +127,7 @@ void OGC_Init( void );
 void OGC_Shutdown( void );
 void OGC_InputInit( void );
 void OGC_PointerMove( float *pitch, float *yaw );
+void OGC_ButtonsFrame( void );
 void OGC_GetPointer( float *x, float *y );
 void OGC_ApplyPointerToViewModel( struct cl_entity_s *view );
 void OGC_ApplyPointerToAim( vec3_t viewangles, float *forwardmove, float *sidemove );

@@ -156,8 +156,31 @@ Aiming works the way console shooters do, rather than as a mouse pointer.
   no-turn zone that is the whole point: you can put a round somewhere off
   centre without swinging the view onto it.
 
-Buttons use the engine's normal defaults and can be rebound from
-Options → Controls in the menu.
+### Buttons
+
+| Button | Action |
+| --- | --- |
+| **B** (trigger) | Fire |
+| **A** | Menu select, and secondary fire in game |
+| **Nunchuk C** | **Use / interact** — doors, buttons, ladders, healthchargers |
+| **Nunchuk Z** | Jump |
+| **D-pad down** | Crouch |
+| **D-pad up** | Reload |
+| **D-pad left / right** | Previous / next weapon |
+| **1** | Flashlight |
+| **2** | Secondary fire |
+| **−** | Walk (hold) |
+| **+** | Pause |
+| **Home** | Menu |
+
+The remote's trigger and A button are handled by SDL as mouse buttons, which
+is what lets the pointer click things in the menu. Everything else is read
+straight from the remote, so which physical button does what is fixed here
+rather than left to SDL's guess at the controller layout. Set `wii_buttons 0`
+to turn that off and fall back to SDL for all of them.
+
+All of it is rebindable from Options → Controls, where the remote buttons show
+up under their engine names.
 
 There is a diagram of the aiming scheme in
 [`wii-aiming.html`](wii-aiming.html) if the description above is hard to

@@ -652,6 +652,10 @@ Called every frame, even if not generating commands
 */
 void Host_InputFrame( void )
 {
+#if XASH_OGC
+	OGC_ButtonsFrame();
+#endif
+
 	IN_Commands();
 
 	IN_MouseMove();

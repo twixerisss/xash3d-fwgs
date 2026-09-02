@@ -40,6 +40,35 @@ static CVAR_DEFINE_AUTO( wii_ir_yawspeed, "220", FCVAR_ARCHIVE, "degrees per sec
 static CVAR_DEFINE_AUTO( wii_ir_pitchspeed, "160", FCVAR_ARCHIVE, "degrees per second of pitch at the screen edge" );
 static CVAR_DEFINE_AUTO( wii_ir_gunsway, "7", FCVAR_ARCHIVE, "degrees the weapon leans towards the pointer" );
 static CVAR_DEFINE_AUTO( wii_ir_cursor, "1", FCVAR_ARCHIVE, "show the pointer in game as the aiming reticle" );
+static CVAR_DEFINE_AUTO( wii_buttons, "1", FCVAR_ARCHIVE, "read the remote and nunchuk buttons straight from WPAD" );
+
+/*
+SDL synthesises a gamepad mapping for whatever it finds on the WPAD channel,
+and which physical button ends up as "A" or "leftshoulder" is its guess, not
+ours. The trigger and the A button already arrive as mouse buttons and work,
+so those are left alone; everything else is read here, where the WPAD masks
+say exactly which button was pressed.
+
+The engine keys below are chosen so the stock bindings already land on the
+right actions, which keeps the whole scheme visible and rebindable from
+Options -> Controls rather than hidden in a config file.
+*/
+static const struct { u32 mask; int key; } ogc_button_map[] =
+{
+	{ WPAD_NUNCHUK_BUTTON_C, K_B_BUTTON    },	// +use
+	{ WPAD_NUNCHUK_BUTTON_Z, K_A_BUTTON    },	// +jump
+	{ WPAD_BUTTON_1,         K_Y_BUTTON    },	// impulse 100, flashlight
+	{ WPAD_BUTTON_2,         K_R2_BUTTON   },	// +attack2
+	{ WPAD_BUTTON_UP,        K_X_BUTTON    },	// +reload
+	{ WPAD_BUTTON_DOWN,      K_L1_BUTTON   },	// +duck
+	{ WPAD_BUTTON_LEFT,      K_DPAD_LEFT   },	// invprev
+	{ WPAD_BUTTON_RIGHT,     K_DPAD_RIGHT  },	// invnext
+	{ WPAD_BUTTON_MINUS,     K_L2_BUTTON   },	// +speed, walk
+	{ WPAD_BUTTON_PLUS,      K_BACK_BUTTON },	// pause
+	{ WPAD_BUTTON_HOME,      K_ESCAPE      },	// menu
+};
+
+static u32 ogc_buttons_held;
 
 // where the player is pointing, as -1..1 from the centre of the screen.
 // kept here so the view code can lean the weapon towards it.
@@ -61,6 +90,7 @@ void OGC_InputInit( void )
 	Cvar_RegisterVariable( &wii_ir_pitchspeed );
 	Cvar_RegisterVariable( &wii_ir_gunsway );
 	Cvar_RegisterVariable( &wii_ir_cursor );
+	Cvar_RegisterVariable( &wii_buttons );
 
 #if XASH_OGC_AIMTEST
 	// The aim maths cannot be exercised without a real pointer, so check it
@@ -85,6 +115,39 @@ void OGC_InputInit( void )
 		Vector2Copy( saved, ogc_pointer );
 	}
 #endif
+}
+
+/*
+============
+OGC_ButtonsFrame
+
+Turns the WPAD button state into engine key events. Edge triggered, so only
+changes are reported. WPAD is not scanned here - SDL already does that every
+frame to produce the pointer motion, and scanning twice would race it.
+============
+*/
+void OGC_ButtonsFrame( void )
+{
+	u32 held, changed;
+	int i;
+
+	if( !wii_buttons.value )
+		return;
+
+	held = WPAD_ButtonsHeld( WPAD_CHAN_0 );
+	changed = held ^ ogc_buttons_held;
+	ogc_buttons_held = held;
+
+	if( !changed )
+		return;
+
+	for( i = 0; i < (int)( sizeof( ogc_button_map ) / sizeof( ogc_button_map[0] )); i++ )
+	{
+		if( !( changed & ogc_button_map[i].mask ))
+			continue;
+
+		Key_Event( ogc_button_map[i].key, ( held & ogc_button_map[i].mask ) != 0 );
+	}
 }
 
 /*
