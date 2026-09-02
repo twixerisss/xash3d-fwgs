@@ -114,6 +114,13 @@ int PSVita_GetArgv( int in_argc, char **in_argv, char ***out_argv );
 void PSVita_InputUpdate( void );
 #endif
 
+#if XASH_OGC && XASH_OGC_MONITOR
+extern volatile int g_ogc_mark;
+#define OGC_MARK( n ) do { g_ogc_mark = ( n ); } while( 0 )
+#else
+#define OGC_MARK( n )
+#endif
+
 #if XASH_OGC
 void OGC_EarlyInit( void );
 void OGC_Init( void );
@@ -122,6 +129,8 @@ void OGC_InputInit( void );
 void OGC_PointerMove( float *pitch, float *yaw );
 void OGC_GetPointer( float *x, float *y );
 void OGC_ApplyPointerToViewModel( struct cl_entity_s *view );
+void OGC_ApplyPointerToAim( vec3_t viewangles, float *forwardmove, float *sidemove );
+qboolean OGC_WantVisiblePointer( void );
 #endif
 
 #if XASH_DOS

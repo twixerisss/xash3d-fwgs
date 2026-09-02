@@ -39,10 +39,13 @@ static CVAR_DEFINE_AUTO( wii_ir_deadzone, "0.35", FCVAR_ARCHIVE, "fraction of th
 static CVAR_DEFINE_AUTO( wii_ir_yawspeed, "220", FCVAR_ARCHIVE, "degrees per second of turn at the screen edge" );
 static CVAR_DEFINE_AUTO( wii_ir_pitchspeed, "160", FCVAR_ARCHIVE, "degrees per second of pitch at the screen edge" );
 static CVAR_DEFINE_AUTO( wii_ir_gunsway, "7", FCVAR_ARCHIVE, "degrees the weapon leans towards the pointer" );
+static CVAR_DEFINE_AUTO( wii_ir_cursor, "1", FCVAR_ARCHIVE, "show the pointer in game as the aiming reticle" );
 
 // where the player is pointing, as -1..1 from the centre of the screen.
 // kept here so the view code can lean the weapon towards it.
 static vec2_t ogc_pointer;
+
+static qboolean OGC_GetPointerAngles( float *dyaw, float *dpitch );
 
 void OGC_InputInit( void )
 {
@@ -57,6 +60,31 @@ void OGC_InputInit( void )
 	Cvar_RegisterVariable( &wii_ir_yawspeed );
 	Cvar_RegisterVariable( &wii_ir_pitchspeed );
 	Cvar_RegisterVariable( &wii_ir_gunsway );
+	Cvar_RegisterVariable( &wii_ir_cursor );
+
+#if XASH_OGC_AIMTEST
+	// The aim maths cannot be exercised without a real pointer, so check it
+	// against known positions at startup instead. At a 90 degree horizontal
+	// field of view the screen edge is 45 degrees off centre.
+	{
+		static const float cases[][2] = { {0,0}, {1,0}, {-1,0}, {0,1}, {0.5f,-0.5f} };
+		vec2_t saved;
+		int i;
+
+		Vector2Copy( ogc_pointer, saved );
+		for( i = 0; i < 5; i++ )
+		{
+			float dy = 0, dp = 0;
+
+			ogc_pointer[0] = cases[i][0];
+			ogc_pointer[1] = cases[i][1];
+			OGC_GetPointerAngles( &dy, &dp );
+			printf( "[AIMTEST] pointer=%+.2f,%+.2f -> dyaw=%+.2f dpitch=%+.2f (fov=%.0f %dx%d)\n",
+				cases[i][0], cases[i][1], dy, dp, cl.local.scr_fov, refState.width, refState.height );
+		}
+		Vector2Copy( saved, ogc_pointer );
+	}
+#endif
 }
 
 /*
@@ -70,6 +98,99 @@ void OGC_GetPointer( float *x, float *y )
 {
 	if( x ) *x = ogc_pointer[0];
 	if( y ) *y = ogc_pointer[1];
+}
+
+/*
+============
+OGC_WantVisiblePointer
+
+The engine hides the cursor in game. With pointer aiming that would leave the
+player with no indication of where the shot is going, since it no longer
+leaves from the centre of the screen.
+============
+*/
+qboolean OGC_WantVisiblePointer( void )
+{
+	return wii_ir.value && wii_ir_cursor.value;
+}
+
+/*
+============
+OGC_GetPointerAngles
+
+The angular offset from the centre of the screen to where the player is
+pointing. Derived from the field of view rather than being a fixed number,
+so a shot fired along these angles lands exactly under the pointer.
+============
+*/
+static qboolean OGC_GetPointerAngles( float *dyaw, float *dpitch )
+{
+	float halffov, tanhalf, aspect;
+
+	if( !wii_ir.value || refState.width <= 0 || refState.height <= 0 )
+		return false;
+
+	halffov = bound( 10.0f, cl.local.scr_fov, 150.0f ) * 0.5f;
+	tanhalf = tan( DEG2RAD( halffov ));
+	aspect  = (float)refState.height / (float)refState.width;
+
+	// screen x grows right and yaw decreases right; screen y grows down and
+	// pitch increases down
+	*dyaw   = -RAD2DEG( atan( ogc_pointer[0] * tanhalf ));
+	*dpitch =  RAD2DEG( atan( ogc_pointer[1] * tanhalf * aspect ));
+
+	return true;
+}
+
+/*
+============
+OGC_ApplyPointerToAim
+
+Aims the shot where the player is pointing rather than where the camera is
+looking. GoldSrc has no notion of an aim direction separate from the view:
+the client puts its view angles in the usercmd and the server fires along
+them. So the split is made here, after the client dll has filled the command
+in - the command carries the pointer angles while cl.viewangles, which the
+camera renders from, is left alone.
+============
+*/
+void OGC_ApplyPointerToAim( vec3_t viewangles, float *forwardmove, float *sidemove )
+{
+	float dyaw, dpitch;
+
+#ifdef XASH_OGC_AIMPROOF
+	// force a fixed pointer offset so the two ends can be compared
+	ogc_pointer[0] = 0.5f; ogc_pointer[1] = 0.0f;
+#endif
+	if( !OGC_GetPointerAngles( &dyaw, &dpitch ))
+		return;
+
+#ifdef XASH_OGC_AIMPROOF
+	{
+		static int n;
+		if(( n % 4 ) == 0 && n < 160 )
+			Con_Printf( "[AIMPROOF] cl_n=%d camera yaw=%.3f  sent yaw=%.3f\n",
+				n, cl.viewangles[YAW], viewangles[YAW] + dyaw );
+		n++;
+	}
+#endif
+	viewangles[YAW]   += dyaw;
+	viewangles[PITCH] += dpitch;
+	viewangles[PITCH] = bound( -89.0f, viewangles[PITCH], 89.0f );
+
+	// Movement is derived from these same angles, so turning the aim would
+	// also turn "forward" - walk while pointing at the edge of the screen and
+	// you would drift sideways. Counter-rotate the move vector by the same
+	// angle so it stays relative to the camera.
+	if( forwardmove && sidemove )
+	{
+		float rad = DEG2RAD( dyaw );
+		float c = cos( rad ), sn = sin( rad );
+		float fm = *forwardmove, sm = *sidemove;
+
+		*forwardmove = fm * c - sm * sn;
+		*sidemove    = fm * sn + sm * c;
+	}
 }
 
 /*

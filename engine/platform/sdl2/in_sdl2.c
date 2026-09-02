@@ -199,6 +199,14 @@ void Platform_SetCursorType( VGUI_DefaultCursor type )
 	if( !visible && Touch_WantVisibleCursor( ))
 		return;
 
+#if XASH_OGC
+	// With pointer aiming the shot goes where the remote points, not where
+	// the camera looks, so the player needs to see the pointer. SDL draws it
+	// at the IR position, which makes it the reticle - keep it on screen.
+	if( !visible && OGC_WantVisiblePointer( ))
+		return;
+#endif
+
 	host.mouse_visible = visible;
 	VGui_UpdateInternalCursorState( type );
 
