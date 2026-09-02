@@ -15,11 +15,19 @@ GNU General Public License for more details.
 
 #include <stdarg.h>
 #include "gl_local.h"
+#if defined( XASH_OGC_TEXTRACE ) || defined( XASH_OGC_TEXDELAY )
+#include <ogc/system.h>
+#include <unistd.h>
+#endif
 #include "crclib.h"
 
 #define TEXTURES_HASH_SIZE	(MAX_TEXTURES >> 2)
 
-static gl_texture_t		gl_textures[MAX_TEXTURES];
+// MAX_TEXTURES entries is a couple of megabytes. As .bss that lands in MEM1
+// on the Wii, which is the same 24MB the GPU has to draw out of; on the heap
+// it lands in MEM2 instead. Kept as a pointer so every gl_textures[i] below
+// still reads the same.
+static gl_texture_t		*gl_textures;
 static gl_texture_t*	gl_texturesHashTable[TEXTURES_HASH_SIZE];
 static uint		gl_numTextures;
 
@@ -974,6 +982,24 @@ upload texture into video memory
 */
 static qboolean GL_UploadTexture( gl_texture_t *tex, rgbdata_t *pic )
 {
+#ifdef XASH_OGC_TEXDELAY
+	// DIAGNOSTIC: pure delay, no printing and no cache traffic of its own.
+	// Distinguishes "the upload path needs time" from "the act of logging
+	// happens to flush something".
+	usleep( XASH_OGC_TEXDELAY );
+#endif
+#ifdef XASH_OGC_TEXTRACE
+	{
+		// DIAGNOSTIC: is the GX upload path running the arenas down, or is it
+		// stalling with memory still free?
+		static int n;
+		u32 a1lo = (u32)SYS_GetArena1Lo(), a1hi = (u32)SYS_GetArena1Hi();
+		u32 a2lo = (u32)SYS_GetArena2Lo(), a2hi = (u32)SYS_GetArena2Hi();
+
+		gEngfuncs.Con_Printf( "[TEX] %4d %-28s a1lo=%08x a1hi=%08x a2lo=%08x a2hi=%08x\n",
+			n++, tex->name, a1lo, a1hi, a2lo, a2hi );
+	}
+#endif
 #if XASH_OGC_TRACE
 	printf( "[TRACE] upload>> %s %dx%d\n", tex->name, pic ? pic->width : -1, pic ? pic->height : -1 );
 #endif
@@ -2076,7 +2102,14 @@ R_InitImages
 */
 void R_InitImages( void )
 {
-	memset( gl_textures, 0, sizeof( gl_textures ));
+	if( !gl_textures )
+	{
+		gl_textures = calloc( MAX_TEXTURES, sizeof( *gl_textures ));
+		if( !gl_textures )
+			gEngfuncs.Host_Error( "%s: failed to allocate %d textures\n", __func__, MAX_TEXTURES );
+	}
+
+	memset( gl_textures, 0, MAX_TEXTURES * sizeof( *gl_textures ));
 	memset( gl_texturesHashTable, 0, sizeof( gl_texturesHashTable ));
 	gl_numTextures = 0;
 
@@ -2109,7 +2142,7 @@ void R_ShutdownImages( void )
 
 	memset( tr.lightmapTextures, 0, sizeof( tr.lightmapTextures ));
 	memset( gl_texturesHashTable, 0, sizeof( gl_texturesHashTable ));
-	memset( gl_textures, 0, sizeof( gl_textures ));
+	memset( gl_textures, 0, MAX_TEXTURES * sizeof( *gl_textures ));
 	gl_numTextures = 0;
 }
 
