@@ -708,6 +708,12 @@ static void GL_SetTextureFormat( gl_texture_t *tex, pixformat_t format, int chan
 			break;
 		}
 	}
+
+#ifdef XASH_OGC_FMTTRACE
+	gEngfuncs.Con_Printf( "[FMT] %-34s samples=%d mask=%d pf=%d fmt=0x%x flags=0x%x\n",
+		tex->name, GL_CalcTextureSamples( channelMask ), channelMask,
+		(int)format, (unsigned)tex->format, (unsigned)tex->flags );
+#endif
 }
 
 /*
