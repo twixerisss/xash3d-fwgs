@@ -156,31 +156,74 @@ Aiming works the way console shooters do, rather than as a mouse pointer.
   no-turn zone that is the whole point: you can put a round somewhere off
   centre without swinging the view onto it.
 
-### Buttons
+Three controllers are supported. Everything below is rebindable from
+Options -> Controls, where the buttons show up under their engine names.
+
+#### Wii remote + nunchuk
+
+A nunchuk is required for this scheme: the stick is how you move.
 
 | Button | Action |
 | --- | --- |
 | **B** (trigger) | Fire |
 | **A** | Menu select, and secondary fire in game |
-| **Nunchuk C** | **Use / interact**: doors, buttons, ladders, healthchargers |
+| **Nunchuk C** | Use / interact |
 | **Nunchuk Z** | Jump |
 | **D-pad down** | Crouch |
 | **D-pad up** | Reload |
 | **D-pad left / right** | Previous / next weapon |
 | **1** | Flashlight |
 | **2** | Secondary fire |
-| **−** | Walk (hold) |
+| **-** | Walk (hold) |
 | **+** | Pause |
 | **Home** | Menu |
 
-The remote's trigger and A button are handled by SDL as mouse buttons, which
-is what lets the pointer click things in the menu. Everything else is read
-straight from the remote, so which physical button does what is fixed here
-rather than left to SDL's guess at the controller layout. Set `wii_buttons 0`
-to turn that off and fall back to SDL for all of them.
+Aiming uses the remote's pointer. Point near the middle of the screen and only
+the weapon moves, which keeps fine aiming steady; point towards an edge and the
+view turns, faster the further out you go. Shots follow the pointer rather than
+the camera.
 
-All of it is rebindable from Options → Controls, where the remote buttons show
-up under their engine names.
+#### Classic controller
+
+| Button | Action |
+| --- | --- |
+| **R** | Fire |
+| **ZR** | Secondary fire |
+| **L** | Crouch |
+| **ZL** | Walk (hold) |
+| **a** | Jump |
+| **b** | Use / interact |
+| **x** | Reload |
+| **y** | Flashlight |
+| **D-pad left / right** | Previous / next weapon |
+| **D-pad down** | Last weapon used |
+| **+** | Pause |
+| **Home** | Menu |
+
+Left stick moves, right stick looks. There is no pointer aiming on this
+scheme, so `wii_ir 0` is worth setting if you use it exclusively.
+
+#### GameCube controller
+
+| Button | Action |
+| --- | --- |
+| **R** | Fire |
+| **Z** | Secondary fire |
+| **L** | Crouch |
+| **A** | Jump |
+| **B** | Use / interact |
+| **X** | Reload |
+| **Y** | Flashlight |
+| **D-pad left / right** | Previous / next weapon |
+| **D-pad down** | Last weapon used |
+| **Start** | Menu |
+
+Left stick moves, C-stick looks.
+
+Which scheme is active is decided from what is plugged in, so a classic
+controller and a GameCube pad can both be connected without fighting each
+other. `wii_buttons 0` turns the direct reading off and falls back to whatever
+SDL makes of the controller.
 
 There is a diagram of the aiming scheme in
 [`wii-aiming.html`](wii-aiming.html) if the description above is hard to

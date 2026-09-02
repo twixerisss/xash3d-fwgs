@@ -19,7 +19,12 @@ short version follows.
 
 ## Controls
 
-A nunchuk is required - the stick is how you move.
+Three controllers are supported. Everything below is rebindable from
+Options -> Controls, where the buttons show up under their engine names.
+
+### Wii remote + nunchuk
+
+A nunchuk is required for this scheme: the stick is how you move.
 
 | Button | Action |
 | --- | --- |
@@ -39,8 +44,49 @@ A nunchuk is required - the stick is how you move.
 Aiming uses the remote's pointer. Point near the middle of the screen and only
 the weapon moves, which keeps fine aiming steady; point towards an edge and the
 view turns, faster the further out you go. Shots follow the pointer rather than
-the camera. All of it is rebindable from Options -> Controls, and the aiming
-feel is tunable with `wii_ir_deadzone`, `wii_ir_yawspeed` and `wii_ir_pitchspeed`.
+the camera.
+
+### Classic controller
+
+| Button | Action |
+| --- | --- |
+| **R** | Fire |
+| **ZR** | Secondary fire |
+| **L** | Crouch |
+| **ZL** | Walk (hold) |
+| **a** | Jump |
+| **b** | Use / interact |
+| **x** | Reload |
+| **y** | Flashlight |
+| **D-pad left / right** | Previous / next weapon |
+| **D-pad down** | Last weapon used |
+| **+** | Pause |
+| **Home** | Menu |
+
+Left stick moves, right stick looks. There is no pointer aiming on this
+scheme, so `wii_ir 0` is worth setting if you use it exclusively.
+
+### GameCube controller
+
+| Button | Action |
+| --- | --- |
+| **R** | Fire |
+| **Z** | Secondary fire |
+| **L** | Crouch |
+| **A** | Jump |
+| **B** | Use / interact |
+| **X** | Reload |
+| **Y** | Flashlight |
+| **D-pad left / right** | Previous / next weapon |
+| **D-pad down** | Last weapon used |
+| **Start** | Menu |
+
+Left stick moves, C-stick looks.
+
+Which scheme is active is decided from what is plugged in, so a classic
+controller and a GameCube pad can both be connected without fighting each
+other. `wii_buttons 0` turns the direct reading off and falls back to whatever
+SDL makes of the controller.
 
 The menu plays `media/gamestartup.mp3`. Steam installs ship the soundtrack as
 `media/Half-Life01.mp3` and up, with no `gamestartup.mp3` at all, so the menu

@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "client.h"
 #include "input.h"
 #include <wiiuse/wpad.h>
+#include <ogc/pad.h>
 
 /*
 The remote's IR sensor arrives from SDL as an absolute pointer, not as
@@ -53,11 +54,18 @@ The engine keys below are chosen so the stock bindings already land on the
 right actions, which keeps the whole scheme visible and rebindable from
 Options -> Controls rather than hidden in a config file.
 */
-static const struct { u32 mask; int key; } ogc_button_map[] =
+typedef struct { u32 mask; int key; } ogc_btn_t;
+
+/*
+Three layouts, one set of engine keys. The keys are picked so the stock
+bindings already land on the right actions, which keeps every scheme visible
+and rebindable from Options -> Controls instead of hidden in a config file.
+*/
+static const ogc_btn_t ogc_map_wiimote[] =
 {
 	{ WPAD_NUNCHUK_BUTTON_C, K_B_BUTTON    },	// +use
 	{ WPAD_NUNCHUK_BUTTON_Z, K_A_BUTTON    },	// +jump
-	{ WPAD_BUTTON_1,         K_Y_BUTTON    },	// impulse 100, flashlight
+	{ WPAD_BUTTON_1,         K_Y_BUTTON    },	// flashlight
 	{ WPAD_BUTTON_2,         K_R2_BUTTON   },	// +attack2
 	{ WPAD_BUTTON_UP,        K_X_BUTTON    },	// +reload
 	{ WPAD_BUTTON_DOWN,      K_L1_BUTTON   },	// +duck
@@ -68,7 +76,48 @@ static const struct { u32 mask; int key; } ogc_button_map[] =
 	{ WPAD_BUTTON_HOME,      K_ESCAPE      },	// menu
 };
 
+/*
+The classic controller reports through the same word as the nunchuk and the
+two overlap bit for bit, so which table applies is decided by the expansion
+WPAD_Probe reports rather than by ORing them together.
+*/
+static const ogc_btn_t ogc_map_classic[] =
+{
+	{ WPAD_CLASSIC_BUTTON_FULL_R, K_R1_BUTTON    },	// +attack
+	{ WPAD_CLASSIC_BUTTON_ZR,     K_R2_BUTTON    },	// +attack2
+	{ WPAD_CLASSIC_BUTTON_FULL_L, K_L1_BUTTON    },	// +duck
+	{ WPAD_CLASSIC_BUTTON_ZL,     K_L2_BUTTON    },	// +speed, walk
+	{ WPAD_CLASSIC_BUTTON_A,      K_A_BUTTON     },	// +jump
+	{ WPAD_CLASSIC_BUTTON_B,      K_B_BUTTON     },	// +use
+	{ WPAD_CLASSIC_BUTTON_X,      K_X_BUTTON     },	// +reload
+	{ WPAD_CLASSIC_BUTTON_Y,      K_Y_BUTTON     },	// flashlight
+	{ WPAD_CLASSIC_BUTTON_UP,     K_DPAD_UP      },
+	{ WPAD_CLASSIC_BUTTON_DOWN,   K_DPAD_DOWN    },	// lastinv
+	{ WPAD_CLASSIC_BUTTON_LEFT,   K_DPAD_LEFT    },	// invprev
+	{ WPAD_CLASSIC_BUTTON_RIGHT,  K_DPAD_RIGHT   },	// invnext
+	{ WPAD_CLASSIC_BUTTON_MINUS,  K_START_BUTTON },
+	{ WPAD_CLASSIC_BUTTON_PLUS,   K_BACK_BUTTON  },	// pause
+	{ WPAD_CLASSIC_BUTTON_HOME,   K_ESCAPE       },	// menu
+};
+
+static const ogc_btn_t ogc_map_gamecube[] =
+{
+	{ PAD_TRIGGER_R,     K_R1_BUTTON   },	// +attack
+	{ PAD_TRIGGER_Z,     K_R2_BUTTON   },	// +attack2
+	{ PAD_TRIGGER_L,     K_L1_BUTTON   },	// +duck
+	{ PAD_BUTTON_A,      K_A_BUTTON    },	// +jump
+	{ PAD_BUTTON_B,      K_B_BUTTON    },	// +use
+	{ PAD_BUTTON_X,      K_X_BUTTON    },	// +reload
+	{ PAD_BUTTON_Y,      K_Y_BUTTON    },	// flashlight
+	{ PAD_BUTTON_UP,     K_DPAD_UP     },
+	{ PAD_BUTTON_DOWN,   K_DPAD_DOWN   },	// lastinv
+	{ PAD_BUTTON_LEFT,   K_DPAD_LEFT   },	// invprev
+	{ PAD_BUTTON_RIGHT,  K_DPAD_RIGHT  },	// invnext
+	{ PAD_BUTTON_START,  K_ESCAPE      },	// menu
+};
+
 static u32 ogc_buttons_held;
+static u32 ogc_pad_held;
 
 // where the player is pointing, as -1..1 from the centre of the screen.
 // kept here so the view code can lean the weapon towards it.
@@ -126,28 +175,45 @@ changes are reported. WPAD is not scanned here - SDL already does that every
 frame to produce the pointer motion, and scanning twice would race it.
 ============
 */
-void OGC_ButtonsFrame( void )
+static void OGC_EmitButtons( const ogc_btn_t *map, int count, u32 held, u32 *prev )
 {
-	u32 held, changed;
+	u32 changed = held ^ *prev;
 	int i;
 
-	if( !wii_buttons.value )
-		return;
-
-	held = WPAD_ButtonsHeld( WPAD_CHAN_0 );
-	changed = held ^ ogc_buttons_held;
-	ogc_buttons_held = held;
+	*prev = held;
 
 	if( !changed )
 		return;
 
-	for( i = 0; i < (int)( sizeof( ogc_button_map ) / sizeof( ogc_button_map[0] )); i++ )
+	for( i = 0; i < count; i++ )
 	{
-		if( !( changed & ogc_button_map[i].mask ))
-			continue;
-
-		Key_Event( ogc_button_map[i].key, ( held & ogc_button_map[i].mask ) != 0 );
+		if( changed & map[i].mask )
+			Key_Event( map[i].key, ( held & map[i].mask ) != 0 );
 	}
+}
+
+void OGC_ButtonsFrame( void )
+{
+	u32 type = WPAD_EXP_NONE;
+
+	if( !wii_buttons.value )
+		return;
+
+	// WPAD and PAD are not scanned here - SDL already does that every frame to
+	// produce the pointer motion, and scanning twice would race it.
+	if( WPAD_Probe( WPAD_CHAN_0, &type ) == WPAD_ERR_NONE && type == WPAD_EXP_CLASSIC )
+	{
+		OGC_EmitButtons( ogc_map_classic, ARRAYSIZE( ogc_map_classic ),
+			WPAD_ButtonsHeld( WPAD_CHAN_0 ), &ogc_buttons_held );
+	}
+	else
+	{
+		OGC_EmitButtons( ogc_map_wiimote, ARRAYSIZE( ogc_map_wiimote ),
+			WPAD_ButtonsHeld( WPAD_CHAN_0 ), &ogc_buttons_held );
+	}
+
+	OGC_EmitButtons( ogc_map_gamecube, ARRAYSIZE( ogc_map_gamecube ),
+		PAD_ButtonsHeld( PAD_CHAN0 ), &ogc_pad_held );
 }
 
 /*
