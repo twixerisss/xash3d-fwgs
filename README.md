@@ -7,7 +7,7 @@ Xash3D FWGS is a heavily modified fork of an original [Xash3D Engine](https://ww
 ## Instalación y Ejecución 
 
 0) Renombrar `xash.dol` a `boot.dol` una vez compilado.
-1) Mueve el archivo `boot.dol a algún directorio dentro de la carpeta `apps`.
+1) Mueve el archivo `boot.dol` a algún directorio dentro de la carpeta `apps`.
 2) Pega tu copia legal `valve` Dentro de la carpeta `xash3d` que deberás crear en la raíz de tu SD.
 3) Ejecútalo por medio de Homebrew Channel.
 
@@ -26,6 +26,7 @@ La versión para Wii actualmente usa cmake para compilar sus binarios. Se integr
  `sudo (dkp-)pacman -S wii-dev wii-sdl2 wii-opengx ppc-bzip2 ppc-freetype ppc-zlib`
 *  Crea una dirección de desarrollo(Ubicada en un almacenamiento el cual no tenga espacios en su nombre, al momento de compilar no se suele encontrar archivos por este problema)
 *  Clona los siguientes repositorios en el mismo directorio.
+```
 git clone --recursive https://github.com/MintFerret/xash3d-fwgs
 git clone --recursive https://github.com/MintFerret/mainui_cpp
 git clone --recursive https://github.com/MintFerret/hlsdk-portable
