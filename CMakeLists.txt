@@ -78,15 +78,15 @@ target_compile_options(filesystem_stdio PRIVATE
 #cl_dll, dlls, menu goes here
 include(makelibrary.txt)
 
-file(GLOB REF_SOFT_SOURCES
+file(GLOB REF_GX_SOURCES
 	ref/common/*
-	ref/soft/*
+	ref/gx/*
 	)
-add_library(ref_soft STATIC ${REF_SOFT_SOURCES})
-target_include_directories(ref_soft PUBLIC
+add_library(ref_gx STATIC ${REF_GX_SOURCES})
+target_include_directories(ref_gx PUBLIC
  	3rdparty/library_suffix/include
  	ref/common
- 	ref/soft
+ 	ref/gx
  	common
  	engine
  	engine/common
@@ -95,15 +95,13 @@ target_include_directories(ref_soft PUBLIC
  	pm_shared
  	filesystem
  	)
- target_compile_definitions(ref_soft PRIVATE
+ target_compile_definitions(ref_gx PRIVATE
  	-DXASH_LOW_MEMORY=2
  	-DXASH_STATIC_LIBS=1
  	-DREF_DLL=1
- 	# -DXASH_GL_STATIC=1
  	)
- target_compile_options(ref_soft PRIVATE -fpermissive -fno-exceptions) #-msdata=eabi -mno-sdata -G0
- # target_link_options(ref_gl PRIVATE -Wl,-msdata-eabi)
- target_link_libraries(ref_soft public)
+ target_compile_options(ref_gx PRIVATE -fpermissive -fno-exceptions)
+ target_link_libraries(ref_gx public ogc)
 
  file(GLOB ENGINE_SOURCES
      engine/client/vgui/*
@@ -155,7 +153,7 @@ target_compile_definitions(xash PUBLIC
 	# -DHAVE_GL=1
 	-DGL_STATIC=1
 	-DXASH_NO_LIBDL=1
-	-DXASH_REF_SOFT_ENABLED=1
+	-DXASH_REF_GX_ENABLED=1
 	-DSTATIC_LINKING=1
 	-DXASH_STATIC_LIBS=1
 	-DNO_VGUI=1
@@ -199,7 +197,7 @@ target_include_directories(xash PUBLIC
     # /opt/devkitpro/portlibs/wii/include/GL
 	)
 
-target_link_libraries(xash PUBLIC filesystem_stdio hl cl_dll ref_soft menu
+target_link_libraries(xash PUBLIC filesystem_stdio hl cl_dll ref_gx menu
 SDL2::SDL2main BZip2::BZip2 Opus::opus
 library_suffix pthread ${DEPS_LIBRARIES}
 MultiEmulator
