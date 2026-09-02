@@ -1425,7 +1425,11 @@ static qboolean R_CheckLightMap( msurface_t *fa )
 		if( !( style >= 32 || style == 0 || style == 20 ))
 			return true;
 
-		byte temp[132*132*4];
+		// 68KB in a frame that sits inside the surface walk, entered once per
+		// visible surface per frame. The renderer is single threaded and the
+		// buffer never outlives the call, so it costs nothing to keep it out
+		// of the stack entirely.
+		static byte temp[132*132*4];
 		mextrasurf_t *info = fa->info;
 		int sample_size = gEngfuncs.Mod_SampleSizeForFace( fa );
 		int smax = ( info->lightextents[0] / sample_size ) + 1;
