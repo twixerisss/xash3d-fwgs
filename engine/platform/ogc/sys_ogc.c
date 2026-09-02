@@ -115,8 +115,43 @@ void OGC_EarlyInit( void )
 #endif
 }
 
+volatile int g_ogc_mark = 0;
+
+#if XASH_OGC_MONITOR
+/*
+A separate thread so progress can be reported without touching the main
+thread's stack. Instrumenting with printf perturbs the very stack contents
+that decide whether this bug shows up, so the marks are plain global writes
+and this thread does the printing from its own stack.
+*/
+static lwp_t ogc_monitor_thread;
+static u8    ogc_monitor_stack[16384] ATTRIBUTE_ALIGN( 8 );
+
+static void *OGC_MonitorThread( void *arg )
+{
+	int last = -12345;
+
+	for( ;; )
+	{
+		usleep( 300000 );
+		if( g_ogc_mark != last )
+		{
+			last = g_ogc_mark;
+			printf( "[MARK] %d\n", last );
+		}
+		else printf( "[MARK] %d (stuck)\n", last );
+	}
+	return NULL;
+}
+#endif
+
 void OGC_Init( void )
 {
+#if XASH_OGC_MONITOR
+	// higher priority than the main thread so it still runs if main spins
+	LWP_CreateThread( &ogc_monitor_thread, OGC_MonitorThread, NULL,
+		ogc_monitor_stack, sizeof( ogc_monitor_stack ), 100 );
+#endif
 	// NOTE: no SYS_STDIO_Report( true ) here. It looks harmless but it
 	// replaces devoptab_list[STD_OUT] with libogc's UART device, which talks
 	// to EXI channel 0 device 1 - a debug port that doesn't exist on retail
@@ -125,6 +160,22 @@ void OGC_Init( void )
 
 	// each step is announced: all of these poke at hardware that can hang,
 	// and this is the only way to see which one did
+#ifdef XASH_OGC_EAT_MEM1
+	{ // DIAGNOSTIC: deliberately reserve MEM1 to test whether it is the limit
+		void *p = SYS_AllocArena1MemLo( XASH_OGC_EAT_MEM1 * 1024 * 1024, 32 );
+		printf( "[MEM] reserved %d MB of arena1 -> %p\n", XASH_OGC_EAT_MEM1, p );
+	}
+#endif
+
+#if XASH_OGC_TRACE
+	{ // report the memory we actually have to work with
+		u32 a1lo = (u32)SYS_GetArena1Lo(), a1hi = (u32)SYS_GetArena1Hi();
+		u32 a2lo = (u32)SYS_GetArena2Lo(), a2hi = (u32)SYS_GetArena2Hi();
+		printf( "[MEM] arena1 %u KB free, arena2 %u KB free\n",
+			( a1hi - a1lo ) / 1024, ( a2hi - a2lo ) / 1024 );
+	}
+#endif
+
 	printf( "OGC_Init: WPAD\n" );
 	WPAD_Init();
 

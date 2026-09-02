@@ -130,6 +130,13 @@ target_compile_definitions(ref_gl PRIVATE
 	-DXASH_GL_STATIC=1
 	)
 target_compile_options(ref_gl PRIVATE -fpermissive -fno-exceptions -fno-strict-aliasing)
+if(XASH_ZEROINIT OR XASH_ZEROINIT_REF)
+	target_compile_options(ref_gl PRIVATE -ftrivial-auto-var-init=zero)
+endif()
+# bisection hook: zero-init only the listed renderer sources
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/zibisect.cmake)
+	include(${CMAKE_CURRENT_SOURCE_DIR}/zibisect.cmake)
+endif()
 target_link_libraries(ref_gl public PkgConfig::OPENGL)
 
 file(GLOB REF_SOFT_SOURCES
@@ -273,6 +280,42 @@ MultiEmulator
 #glut
 )
 target_compile_definitions(xash PUBLIC -D${XASH_REF_DEFINE})
+
+# Diagnostic: zero every automatic variable. If a bug disappears under this,
+# something is reading an uninitialised local.
+set(XASH_OGC_TEXDELAY "" CACHE STRING "microseconds to stall before each GX texture upload (diagnostic)")
+if(XASH_OGC_TEXDELAY AND TARGET ref_gl)
+	target_compile_definitions(ref_gl PUBLIC -DXASH_OGC_TEXDELAY=${XASH_OGC_TEXDELAY})
+endif()
+option(XASH_OGC_LMTRACE "log lightmap build progress (diagnostic)" OFF)
+if(XASH_OGC_LMTRACE AND TARGET ref_gl)
+	target_compile_definitions(ref_gl PUBLIC -DXASH_OGC_LMTRACE=1)
+endif()
+option(XASH_OGC_TEXTRACE "log arena free space on every GX texture upload" OFF)
+if(XASH_OGC_TEXTRACE AND TARGET ref_gl)
+	target_compile_definitions(ref_gl PUBLIC -DXASH_OGC_TEXTRACE=1)
+endif()
+option(XASH_OGC_AIMPROOF "log the pointer aim offset at both ends of the client/server chain" OFF)
+if(XASH_OGC_AIMPROOF)
+	target_compile_definitions(xash PUBLIC -DXASH_OGC_AIMPROOF=1)
+endif()
+option(XASH_OGC_AIMTEST "self-test the pointer aim maths at startup" OFF)
+if(XASH_OGC_AIMTEST)
+	target_compile_definitions(xash PUBLIC -DXASH_OGC_AIMTEST=1)
+endif()
+
+option(XASH_OGC_MONITOR "report progress from a watchdog thread" OFF)
+if(XASH_OGC_MONITOR)
+	target_compile_definitions(xash PUBLIC -DXASH_OGC_MONITOR=1)
+	target_compile_definitions(ref_gl PRIVATE -DXASH_OGC_MONITOR=1)
+endif()
+
+option(XASH_ZEROINIT "zero-initialise all automatic variables" OFF)
+option(XASH_ZEROINIT_REF "zero-initialise automatics in the renderer only" OFF)
+option(XASH_ZEROINIT_ENGINE "zero-initialise automatics in the engine only" OFF)
+if(XASH_ZEROINIT OR XASH_ZEROINIT_ENGINE)
+	target_compile_options(xash PUBLIC -ftrivial-auto-var-init=zero)
+endif()
 
 # Hold the boot until a gecko listener attaches, so nothing printed early is
 # lost. Never for a shipping build: with no gecko on the other end this just

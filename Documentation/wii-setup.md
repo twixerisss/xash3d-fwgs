@@ -11,8 +11,11 @@ plays. Most of the development and measurement was done under the Dolphin
 emulator though, so anything below about frame rates and behaviour comes from
 there unless stated otherwise.
 
-It does not run the whole game yet. See [Known issues](#known-issues) before
-you spend an evening on it.
+Every single-player and training map loads and reaches gameplay, level
+transitions carry you between them, and saving and reloading works. What is
+still missing is the hardware renderer, so the game runs on the software
+rasteriser at 320x240. See [Known issues](#known-issues) before you spend an
+evening on it.
 
 Nothing here can damage your console — homebrew launched from the Homebrew
 Channel runs and exits like any other app, and this port only ever reads from
@@ -149,6 +152,9 @@ Aiming works the way console shooters do, rather than as a mouse pointer.
   point. You swing the camera by pushing outwards and stop by bringing the
   pointer back to the middle.
 - **The nunchuk stick moves you.**
+- **Shots go where you point,** not where the camera faces. Inside the
+  no-turn zone that is the whole point: you can put a round somewhere off
+  centre without swinging the view onto it.
 
 Buttons use the engine's normal defaults and can be rebound from
 Options → Controls in the menu.
@@ -210,20 +216,18 @@ Being straight with you about where this actually is:
 
 - **Only lightly tested on real hardware.** It boots and plays there, but the
   bulk of the testing behind the notes below was done in Dolphin.
-- **Only the opening chapters are verified.** Every map through "We've Got
-  Hostiles" has been checked to load and reach gameplay. Everything from Blast
-  Pit onwards is untested — roughly three quarters of the game.
-- **Level transitions and saves are untested.** Loading a map directly works;
-  walking through a `trigger_changelevel` or using a save has not been
-  verified.
 - **The software renderer is the only one that works.** There is a hardware
-  renderer (`ref_gl`, using the Wii's GPU through opengx) that would look far
-  better and allow a higher resolution. It reaches gameplay but hangs while
-  loading, on a bug that is narrowed to the texture upload path and not yet
-  fixed.
-- **The weapon lean is cosmetic.** The gun tilts towards your pointer but
-  shots still travel along the view axis.
-- **`c1a3c` fails to load** for a reason that has not been diagnosed.
+  renderer (`ref_gl`, using the Wii's GPU through opengx) that would look
+  better and allow a higher resolution. It is close but not usable: it
+  initialises, loads a map, uploads all ~800 textures, builds the lightmaps
+  and can reach gameplay, but most builds stall between "level loaded" and
+  the first frame. The stall is deterministic for any given binary and
+  changes with unrelated edits elsewhere in the tree, which points at a
+  memory bug whose symptom depends on layout rather than at anything in the
+  renderer's own logic.
+- **The weapon lean is small on purpose.** Shots do follow the pointer, but
+  the gun model only leans part of the way towards it, so at the edges of
+  the screen the muzzle and the actual line of fire do not quite agree.
 
 ---
 
