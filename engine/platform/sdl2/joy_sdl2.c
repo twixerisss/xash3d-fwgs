@@ -303,6 +303,11 @@ void SDLash_HandleGameControllerEvent( SDL_Event *ev )
 	case SDL_CONTROLLERBUTTONUP:
 		SDLash_SetActiveGameController( ev->cbutton.which );
 		x = ev->cbutton.button;
+#if XASH_OGC
+		if( Cvar_VariableValue( "wii_showinput" ))
+			Con_Printf( "^3[SDLBTN]^7 raw=%d state=%d key=%d\n", x, (int)ev->cbutton.state,
+				( x >= 0 && x < (int)ARRAYSIZE( g_button_mapping )) ? g_button_mapping[x] : -1 );
+#endif
 		if( x >= 0 && x < ARRAYSIZE( g_button_mapping ))
 			Key_Event( g_button_mapping[x], ev->cbutton.state );
 		break;

@@ -42,6 +42,7 @@ static CVAR_DEFINE_AUTO( wii_ir_pitchspeed, "160", FCVAR_ARCHIVE, "degrees per s
 static CVAR_DEFINE_AUTO( wii_ir_gunsway, "7", FCVAR_ARCHIVE, "degrees the weapon leans towards the pointer" );
 static CVAR_DEFINE_AUTO( wii_ir_cursor, "1", FCVAR_ARCHIVE, "show the pointer in game as the aiming reticle" );
 static CVAR_DEFINE_AUTO( wii_buttons, "1", FCVAR_ARCHIVE, "read the remote and nunchuk buttons straight from WPAD" );
+static CVAR_DEFINE_AUTO( wii_showinput, "0", 0, "print raw controller state whenever it changes" );
 
 /*
 SDL synthesises a gamepad mapping for whatever it finds on the WPAD channel,
@@ -140,6 +141,7 @@ void OGC_InputInit( void )
 	Cvar_RegisterVariable( &wii_ir_gunsway );
 	Cvar_RegisterVariable( &wii_ir_cursor );
 	Cvar_RegisterVariable( &wii_buttons );
+	Cvar_RegisterVariable( &wii_showinput );
 
 #if XASH_OGC_AIMTEST
 	// The aim maths cannot be exercised without a real pointer, so check it
@@ -207,6 +209,25 @@ void OGC_ButtonsFrame( void )
 	// PAD is the other way round - SDL does call PAD_ScanPads every frame, so
 	// scanning it again here would only race it.
 	WPAD_ScanPads();
+
+	if( wii_showinput.value )
+	{
+		// Report whatever the hardware is actually giving us, so a real Wii
+		// can answer what Dolphin cannot: whether these reads see anything.
+		static u32 last_w = 0xdeadbeef, last_p = 0xdeadbeef;
+		u32 w = WPAD_ButtonsHeld( WPAD_CHAN_0 );
+		u32 pd = (u32)PAD_ButtonsHeld( PAD_CHAN0 );
+
+		if( w != last_w || pd != last_p )
+		{
+			u32 t = 0xffffffff;
+			s32 probe = WPAD_Probe( WPAD_CHAN_0, &t );
+
+			last_w = w; last_p = pd;
+			Con_Printf( "^3[INPUT]^7 wpad=%08x pad=%04x probe=%d exp=%u\n",
+				(unsigned)w, (unsigned)pd, (int)probe, (unsigned)t );
+		}
+	}
 	if( WPAD_Probe( WPAD_CHAN_0, &type ) == WPAD_ERR_NONE && type == WPAD_EXP_CLASSIC )
 	{
 		OGC_EmitButtons( ogc_map_classic, ARRAYSIZE( ogc_map_classic ),
