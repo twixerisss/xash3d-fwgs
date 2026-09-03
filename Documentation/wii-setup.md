@@ -282,15 +282,10 @@ Being straight with you about where this actually is:
 
 - **Only lightly tested on real hardware.** It boots and plays there, but the
   bulk of the testing behind the notes below was done in Dolphin.
-- **The software renderer is the only one that works.** There is a hardware
-  renderer (`ref_gl`, using the Wii's GPU through opengx) that would look
-  better and allow a higher resolution. It is close but not usable: it
-  initialises, loads a map, uploads all ~800 textures, builds the lightmaps
-  and can reach gameplay, but most builds stall between "level loaded" and
-  the first frame. The stall is deterministic for any given binary and
-  changes with unrelated edits elsewhere in the tree, which points at a
-  memory bug whose symptom depends on layout rather than at anything in the
-  renderer's own logic.
+- **Two renderers ship.** The software rasteriser at 320x240 is the default and
+  the more heavily tested. The hardware renderer runs on the GPU through opengx
+  at 640x480 with filtered textures; it is newer, and it is the one to fall
+  back from if something looks wrong.
 - **The weapon lean is small on purpose.** Shots do follow the pointer, but
   the gun model only leans part of the way towards it, so at the edges of
   the screen the muzzle and the actual line of fire do not quite agree.

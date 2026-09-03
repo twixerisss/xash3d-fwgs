@@ -670,6 +670,17 @@ static void GL_SetTextureFormat( gl_texture_t *tex, pixformat_t format, int chan
 		switch( GL_CalcTextureSamples( channelMask ))
 		{
 		case 1:
+#if XASH_OGC
+			// opengx's single channel path leaves banding across large
+			// images. Interface artwork goes to RGB565 instead, which is two
+			// bytes a pixel rather than one but half of RGBA, and takes the
+			// same block path as the formats that come out clean. World
+			// textures stay single channel: they are every grey corridor in
+			// Black Mesa and anything wider runs the heap out on a map load.
+			if( !FBitSet( tex->flags, TF_ALPHACONTRAST ))
+				tex->format = GL_RGB;
+			else
+#endif
 			if( FBitSet( tex->flags, TF_ALPHACONTRAST ))
 				tex->format = GL_INTENSITY8;
 			else tex->format = GL_LUMINANCE8;
@@ -960,6 +971,43 @@ static void GL_TextureImageRAW( gl_texture_t *tex, GLint side, GLint level, GLin
 
 			data = lum;
 			inFormat = GL_LUMINANCE;
+		}
+	}
+
+	// RGB565 wants three byte pixels handed to it, same reasoning: the data
+	// arrives as RGBA and opengx reads at the width the format implies.
+	if( tex->format == GL_RGB && ( inFormat == GL_RGBA || inFormat == GL_BGRA ) && data != NULL )
+	{
+		static byte *rgb;
+		static size_t rgbsize;
+		size_t px = (size_t)width * height * depth;
+		size_t need = px * 3;
+
+		if( need > rgbsize )
+		{
+			byte *grown = realloc( rgb, need );
+
+			if( grown )
+			{
+				rgb = grown;
+				rgbsize = need;
+			}
+		}
+
+		if( rgb && need <= rgbsize )
+		{
+			const byte *src = data;
+			size_t i;
+
+			for( i = 0; i < px; i++ )
+			{
+				rgb[i * 3 + 0] = src[i * 4 + 0];
+				rgb[i * 3 + 1] = src[i * 4 + 1];
+				rgb[i * 3 + 2] = src[i * 4 + 2];
+			}
+
+			data = rgb;
+			inFormat = GL_RGB;
 		}
 	}
 #endif
