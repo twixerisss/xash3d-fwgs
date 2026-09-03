@@ -12,10 +12,10 @@ emulator though, so anything below about frame rates and behaviour comes from
 there unless stated otherwise.
 
 Every single-player and training map loads and reaches gameplay, level
-transitions carry you between them, and saving and reloading works. What is
-still missing is the hardware renderer, so the game runs on the software
-rasteriser at 320x240. See [Known issues](#known-issues) before you spend an
-evening on it.
+transitions carry you between them, and saving and reloading works. Two
+renderers ship: the software rasteriser at 320x240, and a hardware renderer
+that runs on the GPU through opengx at 640x480. See
+[Known issues](#known-issues) before you spend an evening on it.
 
 Nothing here can damage your console. Homebrew launched from the Homebrew
 Channel runs and exits like any other app, and this port only ever reads from
