@@ -141,45 +141,60 @@ map.
 ### Performance notes
 
 The devkitPro toolchain puts `-O2 -DNDEBUG` on every target, but the `xash`
-target then appends `-Og -g3 -fno-omit-frame-pointer`, and later flags win in
-GCC. So the engine core - the frame loop, the client, the server, model and
-sound loading - is the only part of the build compiled unoptimised, while the
-renderer and game code are not.
+target used to append `-Og -g3 -fno-omit-frame-pointer`, and later flags win in
+GCC. So the engine core, meaning the frame loop, the client, the server, model
+and sound loading, was the only part of the build compiled unoptimised while
+the renderer and game code were not.
 
-That is fixed, except for one file. Switching the whole target to -O2 hangs
-on map load; bisecting the translation units narrows it to exactly
-`engine/common/host.c`, which is now the only thing still built `-Og`. The
-symptom matches `Host_FilterTime` never returning true, so `Host_Frame` bails
-before rendering - the engine stays alive and logging while nothing reaches
-the screen. Worth finding properly; the rest of the engine is optimised now.
+That is fixed, and `engine/common/host.c` is no longer an exception. It was
+pinned to `-Og` for a long time because switching it to `-O2` let the engine
+come up while almost nothing reached the screen, a symptom matching
+`Host_FilterTime` never returning true so `Host_Frame` bails before rendering.
+Retested at `-O2` across the full map set and the hang does not return, so
+whatever it depended on has been fixed since. If it ever comes back, that is
+the first thing to suspect.
 
 Measured on the c0a0 intro, counting dumped frames over a fixed wall-clock
-window:
+window, software renderer:
 
 | change | avg fps |
 | --- | --- |
 | 640x480, whole engine -Og | 25.3 |
 | 320x240 | 47.2 |
 | 320x240, engine -O2 except host.c | 49.8 |
+| 320x240, everything -O2 | pin removed, worth about 5% |
 | 320x240, 3D rendering disabled (ceiling) | 55.0 |
 
-`vid_scale` is not the way to lower the render resolution - `ref_soft` does
+`vid_scale` is not the way to lower the render resolution, `ref_soft` does
 not implement it and silently ignores the request. Change the video mode
 (`width`/`height`) instead. 512x384 is not a real mode here and falls back to
 640x480.
 
-Two known bugs, both of which look like the same thing from different angles:
+### Frame pacing
 
-* `XASH_RENDERER=gl` initialises, loads a map and precaches all of c0a0, then
-  trips the engine's own heap sentinel check (`_Mem_Check: trashed small
-  header sentinel`) shortly after signon.
-* `XASH_LOW_MEMORY=0` crashes on map load with a NULL callback in libogc's
-  tick task. The menu artwork no longer depends on it - `ui_lowmemory`
-  controls that on its own, and this build ships it enabled - so profile 0 is
-  now only about the engine's own limits.
+Both renderers wait for vsync before presenting, so the console's refresh rate
+is the frame rate ceiling: 60fps on a 60Hz console, 50fps on a 50Hz PAL mode.
+The GPU renderer goes through `SDL_GL_SetSwapInterval`, and the software
+renderer through `SDL_OGC_UpdateWindowFramebuffer`, which asks the flip to
+wait. The engine prints the mode it found at startup.
 
-Both only appear once the engine allocates more than the shipping default
-does, so something is writing past an allocation.
+`fps_max` defaults to 60 and is a fallback, not the pacing. `Host_CalcFPS`
+returns zero in single player whenever `gl_vsync` is set, which skips the
+software cap entirely, so `fps_max` only takes over once vsync is off.
+
+Default resolution is per renderer: 640x480 for the GPU, 320x240 for the
+software rasteriser, since resolution costs the CPU renderer far more.
+
+### Known limits
+
+`XASH_LOW_MEMORY=0` crashes on map load with a NULL callback in libogc's tick
+task. The menu artwork no longer depends on it, `ui_lowmemory` controls that
+on its own, so profile 0 is now only about the engine's own limits.
+
+An engine error on real hardware is still under investigation. The error
+itself is not identified; what is known is that the red exception screen
+players used to see was the shutdown crashing after the error, not the error.
+`sd:/xash3d/engine.log` now carries the reason.
 
 ### Debugging
 

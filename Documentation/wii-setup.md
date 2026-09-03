@@ -251,28 +251,49 @@ If it feels sluggish to turn around, raise `wii_ir_yawspeed`.
 
 ### Resolution and frame rate
 
-The port renders at 320×240 and the Wii's video hardware scales that to your
-TV. That is not an arbitrary choice, the software renderer draws every pixel
-on the CPU, and it is the resolution that lets the game hold a steady 30fps.
+Both renderers wait for vsync before showing a frame, so **the frame rate is
+capped by your console's refresh rate**, not by a setting in the game. On a
+60Hz console that ceiling is 60fps. On a console running a 50Hz PAL mode it is
+50fps, and no configuration will get you past it.
 
-To change it, edit `valve/video.cfg`:
+If you are in a PAL region and want 60, set the console itself to 60Hz in the
+Wii system settings, under Screen. The engine prints what it found at startup,
+so `sd:/xash3d/engine.log` will tell you which mode you are actually in:
 
 ```
-width  "320"
-height "240"
+[VIDEO] 640x480, interlaced, 60Hz -> frame rate ceiling 60fps
 ```
 
-What actually works, measured on the opening chapter:
+Each renderer starts at the resolution that suits it, and you can change it in
+`valve/video.cfg`:
 
-| mode | result |
+```
+width  "640"
+height "480"
+```
+
+**The GPU renderer** starts at 640x480. The GPU draws the pixels, so
+resolution costs it far less than it costs the CPU renderer.
+
+**The software renderer** starts at 320x240 and the Wii's video hardware
+scales that to your TV. That is not arbitrary. It draws every pixel on the
+CPU, so resolution is its single largest cost, measured on the opening
+chapter:
+
+| mode | software renderer |
 | --- | --- |
-| **320×240** | ~48fps uncapped, holds 30 comfortably. The default |
-| 640×240 | ~28fps capped. Twice the horizontal detail, but drops frames more often |
-| 640×480 | ~24fps. **Cannot hold 30**, and no amount of tuning changes that, the renderer alone needs more than the whole frame budget |
-| 512×384 | Not a real mode on this hardware. Silently falls back to 640×480 |
+| **320x240** | ~48fps uncapped. The default |
+| 640x240 | ~28fps. Twice the horizontal detail, drops frames more often |
+| 640x480 | ~24fps. Cannot hold a steady rate, the renderer alone needs more than the whole frame budget |
+| 512x384 | Not a real mode on this hardware. Silently falls back to 640x480 |
 
-`fps_max` sets the cap and defaults to `30`. Raising it does not make the game
-faster; it makes the frame time less consistent, which feels worse.
+Those numbers are why the software renderer will not reach 60fps at any
+setting. With vsync it settles at a steady 30 rather than swinging, which
+looks better than an uneven higher number.
+
+`fps_max` defaults to `60` but only takes effect if you turn vsync off with
+`gl_vsync 0`. With vsync on, which is the default, the refresh rate does the
+pacing and `fps_max` is ignored in single player.
 
 ---
 

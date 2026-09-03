@@ -231,6 +231,32 @@ void OGC_Init( void )
 	}
 #endif
 
+	{
+		// The refresh rate is the frame rate ceiling: SDL paces the flip on
+		// vsync, so a console running 50Hz can never show more than 50fps no
+		// matter what fps_max says. Nothing has ever reported which mode a
+		// player's console actually picked, which makes every frame rate
+		// number from real hardware unreadable. Say it out loud.
+		GXRModeObj *mode = VIDEO_GetPreferredMode( NULL );
+
+		if( mode != NULL )
+		{
+			int hz = ( mode->viTVMode >> 2 ) == VI_PAL || ( mode->viTVMode >> 2 ) == VI_MPAL ? 50 : 60;
+
+			printf( "[VIDEO] %ix%i, %s, %iHz -> frame rate ceiling %ifps\n",
+				mode->fbWidth, mode->efbHeight,
+				mode->viTVMode & VI_NON_INTERLACE ? "progressive" : "interlaced",
+				hz, hz );
+
+			if( hz == 50 )
+			{
+				printf( "[VIDEO] this console is in a 50Hz mode. 60fps is not\n" );
+				printf( "[VIDEO] reachable until it is switched to 60Hz in the\n" );
+				printf( "[VIDEO] Wii system settings.\n" );
+			}
+		}
+	}
+
 	printf( "OGC_Init: WPAD\n" );
 	WPAD_Init();
 

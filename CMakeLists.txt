@@ -202,6 +202,18 @@ add_executable(xash ${ENGINE_SOURCES}
 engine/platform/posix/sys_posix.c
 engine/common/http/net_http_xash.c
 )
+# The software rasteriser draws every pixel on the CPU, so resolution is its
+# single biggest cost and 320x240 is what lets it hold a steady frame rate; the
+# Wii's video hardware scales that to the TV for free. The GPU renderer has no
+# such problem, and starting it at a quarter of the output resolution wastes
+# the hardware doing the work. Pick per renderer rather than making one choice
+# serve both.
+if(XASH_RENDERER STREQUAL "gl")
+	set(XASH_OGC_DEFAULT_MODE -DDEFAULT_MODE_WIDTH=640 -DDEFAULT_MODE_HEIGHT=480)
+else()
+	set(XASH_OGC_DEFAULT_MODE -DDEFAULT_MODE_WIDTH=320 -DDEFAULT_MODE_HEIGHT=240)
+endif()
+
 target_compile_definitions(xash PUBLIC
 #	-DXASH_DEDICATED=1
 	-DXASH_GAMEDIR="valve"
@@ -227,12 +239,13 @@ target_compile_definitions(xash PUBLIC
 	# ~25fps; 320x240 costs ~2.6ms and nearly doubles it, and the Wii's video
 	# hardware scales it to the TV for free. Override with width/height in
 	# video.cfg if you would rather have the pixels than the frames.
-	# c0a0 averages ~48fps at this resolution, so capping at 30 leaves enough
-	# headroom that the frame time actually holds steady instead of swinging
-	# between the low 20s and 60.
-	-DDEFAULT_FPS_MAX="30"
-	-DDEFAULT_MODE_WIDTH=320
-	-DDEFAULT_MODE_HEIGHT=240
+	# fps_max is the fallback, not the pacing. In single player with gl_vsync
+	# on, Host_CalcFPS returns zero and no software cap runs at all: the flip
+	# waits for vsync and the console's refresh rate sets the frame rate. This
+	# value only takes over when vsync is turned off, so it wants to be the
+	# refresh rate rather than something under it.
+	-DDEFAULT_FPS_MAX="60"
+	${XASH_OGC_DEFAULT_MODE}
 	-DXASH_OGC_GECKO=1
 	#-DUSE_FS_SEARCH_FOR_LOOKUPS=0
 
@@ -383,10 +396,12 @@ ogc_create_dol(xash)
 #
 # Worth roughly 5% on c0a0 (47.2 -> 49.8fps). Fixing host.c properly would
 # let this go away entirely.
-set_source_files_properties(
-	${CMAKE_CURRENT_SOURCE_DIR}/engine/common/host.c
-	PROPERTIES COMPILE_OPTIONS "-Og"
-)
+# host.c used to be pinned to -Og here: at -O2 the engine came up but almost
+# nothing reached the screen, which fits Host_FilterTime always returning
+# false. That pin cost about 5% (47.2 -> 49.8fps on c0a0) and it is gone now.
+# Retested at -O2 across the map set and the hang does not come back, so
+# whatever it depended on has been fixed since. If it ever returns, this is
+# the first thing to suspect.
 
 target_compile_options(xash PUBLIC
 	-std=gnu11
