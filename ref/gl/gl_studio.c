@@ -17,6 +17,7 @@ GNU General Public License for more details.
 #include "xash3d_mathlib.h"
 #include "const.h"
 #include "r_studioint.h"
+#include <malloc.h>
 #include "triangleapi.h"
 #include "studio.h"
 #include "pm_local.h"
@@ -125,7 +126,12 @@ CVAR_DEFINE_AUTO( r_studio_drawelements, "1", FCVAR_GLCONFIG, "use glDrawElement
 static cvar_t			*cl_righthand = NULL;
 
 static r_studio_interface_t	*pStudioDraw;
-static studio_draw_state_t	g_studio;		// global studio state
+// 2.4MB of vertex and bone scratch. As .bss it sits in MEM1, which on the Wii
+// is the same pool the GPU draws out of; on the heap it goes to MEM2. It is
+// allocated once in R_StudioInit and never freed, so it must not come from a
+// pool the engine empties between maps.
+static studio_draw_state_t	*g_studio_mem;		// global studio state
+#define g_studio			(*g_studio_mem)
 
 // global variables
 static qboolean m_fDoRemap;
@@ -145,9 +151,27 @@ R_StudioInit
 */
 void R_StudioInit( void )
 {
+	if( !g_studio_mem )
+	{
+		// 32-byte aligned in case anything here is handed to the GPU directly
+		g_studio_mem = memalign( 32, sizeof( *g_studio_mem ));
+		if( !g_studio_mem )
+			gEngfuncs.Host_Error( "%s: failed to allocate studio state\n", __func__ );
+		memset( g_studio_mem, 0, sizeof( *g_studio_mem ));
+	}
 
 #if XASH_PSVITA
 	// don't do the same array-building work twice since that's what our FFP shim does anyway
+	gEngfuncs.Cvar_FullSet( "r_studio_drawelements", "0", FCVAR_READ_ONLY );
+#endif
+
+#if XASH_OGC
+	// R_StudioDrawArrays is compiled out entirely on this platform - opengx
+	// has no vertex array path - so the whole body of it does nothing. The
+	// cvar still defaulted to on, which sent every studio model down that
+	// dead branch and drew none of them: no NPCs, no weapon in your hands,
+	// though they were all still there to talk to and shoot. Take the
+	// immediate mode path instead, which is implemented.
 	gEngfuncs.Cvar_FullSet( "r_studio_drawelements", "0", FCVAR_READ_ONLY );
 #endif
 
@@ -3455,6 +3479,9 @@ void Mod_StudioLoadTextures( model_t *mod, void *data )
 {
 	studiohdr_t	*phdr = (studiohdr_t *)data;
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] Mod_StudioLoadTextures %s ntex=%d\n", mod ? mod->name : "(null)", phdr ? phdr->numtextures : -1 );
+#endif
 	if( !phdr )
 		return;
 

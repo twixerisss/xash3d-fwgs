@@ -1,0 +1,373 @@
+<title>Wii Pointer Aiming</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* Complete light palette. Neutrals carry a slight blue-steel bias so they
+     sit with the amber accent rather than reading as default grey. */
+  :root {
+    --ground:      #eef1f5;
+    --panel:       #ffffff;
+    --line:        #c3cbd6;
+    --line-soft:   #dde2ea;
+    --ink:         #171d26;
+    --ink-soft:    #56616f;
+    --ink-faint:   #7d8794;
+    --amber:       #b45f06;   /* the turning zone: active, hazard-orange */
+    --amber-fill:  rgba(180, 95, 6, 0.10);
+    --steel:       #12657c;   /* the steady zone: calm */
+    --steel-fill:  rgba(18, 101, 124, 0.09);
+    --shadow:      0 1px 2px rgba(23, 29, 38, .07), 0 8px 24px rgba(23, 29, 38, .06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:     #0f1319;
+      --panel:      #181e27;
+      --line:       #333d4b;
+      --line-soft:  #252d38;
+      --ink:        #dde3ec;
+      --ink-soft:   #98a3b2;
+      --ink-faint:  #6d7887;
+      --amber:      #ff9e34;
+      --amber-fill: rgba(255, 158, 52, 0.13);
+      --steel:      #5cc0d8;
+      --steel-fill: rgba(92, 192, 216, 0.11);
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:     #0f1319;
+    --panel:      #181e27;
+    --line:       #333d4b;
+    --line-soft:  #252d38;
+    --ink:        #dde3ec;
+    --ink-soft:   #98a3b2;
+    --ink-faint:  #6d7887;
+    --amber:      #ff9e34;
+    --amber-fill: rgba(255, 158, 52, 0.13);
+    --steel:      #5cc0d8;
+    --steel-fill: rgba(92, 192, 216, 0.11);
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 3rem 1.25rem 5rem;
+  }
+
+  .wrap {
+    max-width: 46rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+
+  header { display: flex; flex-direction: column; gap: .6rem; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  h1 {
+    font-family: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    line-height: 1.08;
+    letter-spacing: -.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-family: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 1.24rem;
+    letter-spacing: .005em;
+    margin: 0 0 .7rem;
+    text-wrap: balance;
+  }
+
+  p { margin: 0 0 1rem; max-width: 65ch; }
+  p:last-child { margin-bottom: 0; }
+
+  .lede { font-size: 1.06rem; color: var(--ink-soft); }
+
+  section { display: flex; flex-direction: column; }
+
+  figure {
+    margin: 0;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 1.4rem 1.4rem 1rem;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+
+  figure + p, figure + .note { margin-top: 1.1rem; }
+
+  svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
+  figcaption {
+    font-size: .85rem;
+    color: var(--ink-soft);
+    margin-top: 1rem;
+    padding-top: .85rem;
+    border-top: 1px solid var(--line-soft);
+    max-width: 62ch;
+  }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .88em;
+  }
+
+  code { color: var(--amber); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .92rem;
+  }
+
+  caption { text-align: left; color: var(--ink-soft); font-size: .88rem; padding-bottom: .7rem; }
+
+  th, td {
+    text-align: left;
+    padding: .6rem .7rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  td:first-child { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--amber); white-space: nowrap; }
+  td:nth-child(2) { font-variant-numeric: tabular-nums; color: var(--ink-soft); white-space: nowrap; }
+
+  tr:last-child td { border-bottom: none; }
+
+  .table-shell {
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 1.2rem 1.3rem;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+
+  .note {
+    border-left: 2px solid var(--amber);
+    padding: .1rem 0 .1rem 1rem;
+    color: var(--ink-soft);
+    font-size: .95rem;
+  }
+
+  .note strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    color: var(--ink-faint);
+    font-size: .85rem;
+    border-top: 1px solid var(--line-soft);
+    padding-top: 1.2rem;
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <span class="eyebrow">Half-Life · Wii port · control scheme</span>
+    <h1>Aiming with the Wii remote pointer</h1>
+    <p class="lede">SDL gives us the remote's IR sensor as an <em>absolute</em> pointer, not relative motion. The engine's mouse look expects deltas — so pointing worked until the pointer hit the edge of the screen, and then you simply couldn't turn any further. Here's what replaced it.</p>
+  </header>
+
+  <section>
+    <h2>The screen is two regions</h2>
+
+    <figure>
+      <svg viewBox="0 0 640 400" role="img" aria-label="A screen divided into a central steady box where pointing only leans the weapon, and an outer region where pointing turns the camera, faster the further out you point.">
+        <defs>
+          <marker id="ar-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--amber)"/>
+          </marker>
+          <marker id="ar-steel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--steel)"/>
+          </marker>
+        </defs>
+
+        <!-- outer screen -->
+        <rect x="60" y="44" width="520" height="293" rx="4"
+              fill="var(--amber-fill)" stroke="currentColor" stroke-width="1.5" opacity="0.95"/>
+
+        <!-- deadzone box: |n| < 0.35 on each axis -->
+        <rect x="229" y="139" width="182" height="103" rx="3"
+              fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+        <!-- centre cross -->
+        <line x1="313" y1="190.5" x2="327" y2="190.5" stroke="var(--steel)" stroke-width="1.2"/>
+        <line x1="320" y1="183.5" x2="320" y2="197.5" stroke="var(--steel)" stroke-width="1.2"/>
+
+        <!-- pointer inside the box -->
+        <circle cx="286" cy="167" r="5.5" fill="var(--steel)"/>
+        <line x1="286" y1="167" x2="320" y2="190.5" stroke="var(--steel)" stroke-width="1.2" stroke-dasharray="3 3"/>
+
+        <!-- pointer outside the box, to the right -->
+        <circle cx="516" cy="205" r="5.5" fill="var(--amber)"/>
+        <line x1="528" y1="205" x2="572" y2="205" stroke="var(--amber)" stroke-width="2.5" marker-end="url(#ar-amber)"/>
+        <line x1="503" y1="222" x2="437" y2="222" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="4 3" opacity=".75"/>
+
+        <!-- labels: inside -->
+        <text x="286" y="127" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--steel)">STEADY ZONE</text>
+        <text x="286" y="112" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="currentColor">weapon leans · view holds still</text>
+
+        <!-- labels: outside -->
+        <text x="516" y="176" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--amber)">TURN ZONE</text>
+        <text x="516" y="161" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="currentColor">view swings right</text>
+        <text x="470" y="240" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="var(--ink-faint)">further out = faster</text>
+
+        <!-- dimension line for the box -->
+        <line x1="229" y1="360" x2="411" y2="360" stroke="currentColor" stroke-width="1" opacity=".55"/>
+        <line x1="229" y1="355" x2="229" y2="365" stroke="currentColor" stroke-width="1" opacity=".55"/>
+        <line x1="411" y1="355" x2="411" y2="365" stroke="currentColor" stroke-width="1" opacity=".55"/>
+        <text x="320" y="380" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">35% of screen · wii_ir_deadzone</text>
+
+        <!-- screen label -->
+        <text x="60" y="34" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">SCREEN</text>
+      </svg>
+      <figcaption>Point inside the dashed box and the camera does not move at all — only the weapon leans. Cross the box and the view starts turning, and keeps turning while you stay out there.</figcaption>
+    </figure>
+
+    <p>That split is the whole trick. A steady middle is what makes fine aiming possible, because small hand movements don't drag the whole world with them. Pushing toward an edge is how you swing the camera, and coming back to the middle is how you stop.</p>
+  </section>
+
+  <section>
+    <h2>How fast it turns</h2>
+
+    <figure>
+      <svg viewBox="0 0 560 260" role="img" aria-label="Graph of turn speed against pointer distance from centre. Speed stays at zero across the deadzone, then rises linearly to the maximum at the edge of the screen.">
+        <defs>
+          <marker id="ar-axis" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- axes -->
+        <line x1="70" y1="200" x2="500" y2="200" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar-axis)"/>
+        <line x1="70" y1="200" x2="70" y2="40" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar-axis)"/>
+
+        <!-- deadzone shading: 0 to 0.35 of the 0..1 span (70 -> 470) -->
+        <rect x="70" y="60" width="140" height="140" fill="var(--steel-fill)"/>
+        <line x1="210" y1="60" x2="210" y2="200" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+        <!-- the curve: flat then linear -->
+        <polyline points="70,200 210,200 470,60" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-linejoin="round"/>
+
+        <!-- max marker -->
+        <circle cx="470" cy="60" r="4" fill="var(--amber)"/>
+        <line x1="70" y1="60" x2="470" y2="60" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>
+
+        <!-- labels -->
+        <text x="140" y="130" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--steel)">no turn</text>
+        <text x="345" y="120" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="currentColor">ramps up linearly</text>
+
+        <text x="70" y="222" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">centre</text>
+        <text x="210" y="222" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">0.35</text>
+        <text x="470" y="222" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">screen edge</text>
+        <text x="285" y="246" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--ink-soft)">pointer distance from centre</text>
+
+        <text x="58" y="64" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">220°/s</text>
+        <text x="58" y="204" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">0</text>
+        <text x="30" y="130" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--ink-soft)" transform="rotate(-90 30 130)">turn speed</text>
+      </svg>
+      <figcaption>Turn speed is zero right up to the edge of the steady zone, then climbs to <span class="mono">wii_ir_yawspeed</span> at the screen edge — so there is no jump as you cross the boundary.</figcaption>
+    </figure>
+
+    <p>The ramp restarts at the box edge rather than the screen centre, which is why crossing the line feels smooth instead of snapping into a turn. Pitch works the same way on the vertical axis, just slower by default.</p>
+  </section>
+
+  <section>
+    <h2>The gun leans, the bullet doesn't</h2>
+
+    <figure>
+      <svg viewBox="0 0 560 250" role="img" aria-label="Top-down view: both the weapon model and the shot follow the pointer, while the camera keeps facing straight ahead.">
+        <defs>
+          <marker id="ar-shot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="ar-lean" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--amber)"/>
+          </marker>
+        </defs>
+
+        <!-- player -->
+        <circle cx="150" cy="190" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <text x="150" y="222" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-faint)">PLAYER</text>
+
+        <!-- camera axis: straight ahead -->
+        <line x1="160" y1="190" x2="470" y2="190" stroke="currentColor" stroke-width="2.5" marker-end="url(#ar-shot)"/>
+        <text x="320" y="181" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="currentColor">shot follows the pointer</text>
+
+        <!-- weapon lean -->
+        <line x1="160" y1="187" x2="430" y2="120" stroke="var(--amber)" stroke-width="2.5" marker-end="url(#ar-lean)"/>
+        <text x="318" y="112" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="var(--amber)">weapon model leans toward the pointer</text>
+
+        <!-- angle arc -->
+        <path d="M 230 189 A 80 80 0 0 0 227 172" fill="none" stroke="var(--amber)" stroke-width="1.2" opacity=".8"/>
+        <text x="252" y="169" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--amber)">7° max</text>
+
+        <!-- pointer -->
+        <circle cx="446" cy="116" r="5" fill="var(--amber)"/>
+        <text x="446" y="98" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--amber)">POINTER</text>
+      </svg>
+      <figcaption>Seen from above: the weapon rotates up to <span class="mono">wii_ir_gunsway</span> degrees toward where you point, but the shot still leaves along the camera axis.</figcaption>
+    </figure>
+
+    <div class="note"><strong>This is the one honest compromise.</strong> Shots follow the pointer. GoldSrc has no aim direction separate from the view: the client puts its view angles in the usercmd and the server fires along them. So the two are split after the client has filled the command in, and the command carries the pointer angles while the angles the camera renders from are left alone. The gun model only leans part of the way, so the muzzle and the line of fire do not quite agree at the screen edges.</div>
+  </section>
+
+  <section>
+    <h2>What's mapped where</h2>
+    <div class="table-shell">
+      <table>
+        <caption>All five are archived cvars — change them from the console and they persist.</caption>
+        <thead>
+          <tr><th>cvar</th><th>default</th><th>what it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>wii_ir</td><td>1</td><td>Pointer aiming on or off entirely</td></tr>
+          <tr><td>wii_ir_deadzone</td><td>0.35</td><td>How much of the screen is the steady zone, as a fraction. Raise it for a calmer centre, lower it to turn sooner</td></tr>
+          <tr><td>wii_ir_yawspeed</td><td>220</td><td>Degrees per second of horizontal turn at the screen edge</td></tr>
+          <tr><td>wii_ir_pitchspeed</td><td>160</td><td>The same for looking up and down</td></tr>
+          <tr><td>wii_ir_gunsway</td><td>7</td><td>Degrees the weapon leans toward the pointer</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:1.1rem">Movement stays on the nunchuk stick, which arrives as a normal joystick axis — so the nunchuk is required to walk, and the remote handles everything you aim.</p>
+  </section>
+
+  <footer>
+    Implemented in <span class="mono">engine/platform/ogc/in_ogc.c</span>. The lean is applied to <span class="mono">clgame.viewent</span> after the client dll has placed the weapon, so it works with any game dll rather than only stock Half-Life.
+  </footer>
+
+</div>

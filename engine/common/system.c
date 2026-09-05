@@ -428,6 +428,17 @@ void Sys_Error( const char *error, ... )
 		Sys_WaitForQuit();
 	}
 
+#if XASH_OGC
+	// A console has nowhere to return to, and the full shutdown walks the
+	// renderer teardown on the way out. That teardown has been seen to fault
+	// on real hardware, inside free, while the engine was already on its way
+	// down from an error. The second crash replaces the message with a
+	// register dump, so the player is shown a red screen and never learns
+	// what actually went wrong. Commit the reason to the card and stop here.
+	Sys_CloseLog( text );
+	Host_ExitInMain();
+#endif
+
 	Sys_Quit( "caught an error" );
 }
 

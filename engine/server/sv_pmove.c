@@ -937,6 +937,14 @@ void SV_RunCmd( sv_client_t *cl, usercmd_t *ucmd, int random_seed )
 
 	VectorCopy( clent->v.v_angle, svgame.pmove->oldangles ); // save oldangles
 	if( !clent->v.fixangle ) VectorCopy( ucmd->viewangles, clent->v.v_angle );
+#ifdef XASH_OGC_AIMPROOF
+	{
+		static int n;
+		if(( n % 4 ) == 0 && n < 160 )
+			Con_Printf( "[AIMPROOF] sv_n=%d v_angle yaw=%.3f\n", n, clent->v.v_angle[YAW] );
+		n++;
+	}
+#endif
 
 	VectorClear( clent->v.clbasevelocity );
 

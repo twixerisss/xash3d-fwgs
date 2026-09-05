@@ -21,6 +21,14 @@ GNU General Public License for more details.
 #include <sys/select.h>
 #include <sys/time.h>
 
+#if XASH_OGC
+// no select() in devkitPPC's newlib, and a console with no terminal attached
+// has nothing to read anyway
+char *Posix_Input( void )
+{
+	return NULL;
+}
+#else
 char *Posix_Input( void )
 {
 	fd_set rfds;
@@ -50,4 +58,5 @@ char *Posix_Input( void )
 
 	return NULL;
 }
+#endif // XASH_OGC
 #endif // !XASH_MOBILE_PLATFORM && !XASH_LOW_MEMORY

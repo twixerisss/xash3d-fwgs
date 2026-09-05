@@ -15,11 +15,20 @@ GNU General Public License for more details.
 
 #include <stdarg.h>
 #include "gl_local.h"
+#include <stdlib.h>
+#if defined( XASH_OGC_TEXTRACE ) || defined( XASH_OGC_TEXDELAY )
+#include <ogc/system.h>
+#include <unistd.h>
+#endif
 #include "crclib.h"
 
 #define TEXTURES_HASH_SIZE	(MAX_TEXTURES >> 2)
 
-static gl_texture_t		gl_textures[MAX_TEXTURES];
+// MAX_TEXTURES entries is a couple of megabytes. As .bss that lands in MEM1
+// on the Wii, which is the same 24MB the GPU has to draw out of; on the heap
+// it lands in MEM2 instead. Kept as a pointer so every gl_textures[i] below
+// still reads the same.
+static gl_texture_t		*gl_textures;
 static gl_texture_t*	gl_texturesHashTable[TEXTURES_HASH_SIZE];
 static uint		gl_numTextures;
 
@@ -412,6 +421,21 @@ static int GL_CalcMipmapCount( gl_texture_t *tex, qboolean haveBuffer )
 
 	// mip-maps can't exceeds 16
 	int mipcount;
+
+#if XASH_OGC
+	// opengx overruns the buffer it uploads from on every mip level past the
+	// first. The write lands in whichever allocation follows on the heap, so
+	// nothing faults and the damage surfaces much later somewhere unrelated -
+	// a command argument that cannot be freed, a connection refused because
+	// the protocol byte read back as zero. Confirmed by walking the engine's
+	// pool sentinels after each level upload: level 0 is always clean, and
+	// the first level past it trashes a neighbour.
+	//
+	// Until that is fixed in opengx, ship without mip levels. The software
+	// renderer has none either, so this costs nothing that players had.
+	return 1;
+#endif
+
 	for( mipcount = 0; mipcount < 16; mipcount++ )
 	{
 		int width = Q_max( 1, ( tex->width >> mipcount ));
@@ -646,18 +670,57 @@ static void GL_SetTextureFormat( gl_texture_t *tex, pixformat_t format, int chan
 		switch( GL_CalcTextureSamples( channelMask ))
 		{
 		case 1:
+#if XASH_OGC
+			// opengx's single channel path leaves banding across large
+			// images. Interface artwork goes to RGB565 instead, which is two
+			// bytes a pixel rather than one but half of RGBA, and takes the
+			// same block path as the formats that come out clean. World
+			// textures stay single channel: they are every grey corridor in
+			// Black Mesa and anything wider runs the heap out on a map load.
+			if( !FBitSet( tex->flags, TF_ALPHACONTRAST ))
+				tex->format = GL_RGB;
+			else
+#endif
 			if( FBitSet( tex->flags, TF_ALPHACONTRAST ))
 				tex->format = GL_INTENSITY8;
 			else tex->format = GL_LUMINANCE8;
 			break;
-		case 2: tex->format = GL_LUMINANCE8_ALPHA8; break;
+		case 2:
+#if XASH_OGC
+			// Two bytes per pixel asked for, four handed over: opengx walks
+			// the data by the internal format, so the console font came out
+			// opaque with the glyph alpha lost. Only a handful of textures
+			// are greyscale plus alpha, so this costs almost nothing.
+			tex->format = GL_RGBA8;
+#else
+			tex->format = GL_LUMINANCE8_ALPHA8;
+#endif
+			break;
 		case 3:
+#if XASH_OGC
+			// opengx walks the pixel data using the internal format rather
+			// than the format the data is actually in, so the two have to
+			// agree on bytes per pixel. The engine hands over RGBA here even
+			// when the image carries no alpha, so asking for RGB made it step
+			// three bytes at a time and the channels rotated from one pixel
+			// to the next - the whole menu came out in vertical stripes.
+			//
+			// So narrow the data to match instead of widening the format:
+			// GL_TextureImageRAW rewrites RGBA to three bytes a pixel
+			// whenever the format is GL_RGB, which is the same path the
+			// single channel case above already takes. GX stores it as
+			// RGB565, two bytes a pixel against RGBA8's four, and these are
+			// most of the textures a map loads. On c4a3 that is the
+			// difference between having room for a save and not.
+			tex->format = GL_RGB;
+#else
 			switch( bits )
 			{
 			case 16: tex->format = GL_RGB5; break;
 			case 32: tex->format = GL_RGB8; break;
 			default: tex->format = GL_RGB; break;
 			}
+#endif
 			break;
 		case 4:
 		default:
@@ -670,6 +733,12 @@ static void GL_SetTextureFormat( gl_texture_t *tex, pixformat_t format, int chan
 			break;
 		}
 	}
+
+#ifdef XASH_OGC_FMTTRACE
+	gEngfuncs.Con_Printf( "[FMT] %-34s samples=%d mask=%d pf=%d fmt=0x%x flags=0x%x\n",
+		tex->name, GL_CalcTextureSamples( channelMask ), channelMask,
+		(int)format, (unsigned)tex->format, (unsigned)tex->flags );
+#endif
 }
 
 /*
@@ -868,6 +937,84 @@ static void GL_TextureImageRAW( gl_texture_t *tex, GLint side, GLint level, GLin
 	else
 		dataType = GL_UNSIGNED_BYTE;
 
+#if XASH_OGC
+	// opengx reads the pixels at the stride the internal format implies. The
+	// single channel formats are the one case that cannot be fixed by
+	// widening the format instead: single channel covers every grey corridor
+	// texture in Black Mesa, and making those RGBA runs the heap out during a
+	// map load. So narrow the data to match the format rather than the other
+	// way round. The image is greyscale by the engine's own reckoning, which
+	// is why it picked this format, so one channel loses nothing - and it
+	// uploads a quarter of the bytes.
+	if(( tex->format == GL_LUMINANCE8 || tex->format == GL_INTENSITY8 )
+		&& ( inFormat == GL_RGBA || inFormat == GL_BGRA ) && data != NULL )
+	{
+		static byte *lum;
+		static size_t lumsize;
+		size_t need = (size_t)width * height * depth;
+
+		if( need > lumsize )
+		{
+			byte *grown = realloc( lum, need );
+
+			if( grown )
+			{
+				lum = grown;
+				lumsize = need;
+			}
+		}
+
+		if( lum && need <= lumsize )
+		{
+			const byte *src = data;
+			size_t i;
+
+			for( i = 0; i < need; i++ )
+				lum[i] = src[i * 4];
+
+			data = lum;
+			inFormat = GL_LUMINANCE;
+		}
+	}
+
+	// RGB565 wants three byte pixels handed to it, same reasoning: the data
+	// arrives as RGBA and opengx reads at the width the format implies.
+	if( tex->format == GL_RGB && ( inFormat == GL_RGBA || inFormat == GL_BGRA ) && data != NULL )
+	{
+		static byte *rgb;
+		static size_t rgbsize;
+		size_t px = (size_t)width * height * depth;
+		size_t need = px * 3;
+
+		if( need > rgbsize )
+		{
+			byte *grown = realloc( rgb, need );
+
+			if( grown )
+			{
+				rgb = grown;
+				rgbsize = need;
+			}
+		}
+
+		if( rgb && need <= rgbsize )
+		{
+			const byte *src = data;
+			size_t i;
+
+			for( i = 0; i < px; i++ )
+			{
+				rgb[i * 3 + 0] = src[i * 4 + 0];
+				rgb[i * 3 + 1] = src[i * 4 + 1];
+				rgb[i * 3 + 2] = src[i * 4 + 2];
+			}
+
+			data = rgb;
+			inFormat = GL_RGB;
+		}
+	}
+#endif
+
 	#if XASH_OGC
 	if( tex->target == GL_TEXTURE_CUBE_MAP_ARB )
 	{
@@ -972,8 +1119,30 @@ GL_UploadTexture
 upload texture into video memory
 ===============
 */
+
 static qboolean GL_UploadTexture( gl_texture_t *tex, rgbdata_t *pic )
 {
+#ifdef XASH_OGC_TEXDELAY
+	// DIAGNOSTIC: pure delay, no printing and no cache traffic of its own.
+	// Distinguishes "the upload path needs time" from "the act of logging
+	// happens to flush something".
+	usleep( XASH_OGC_TEXDELAY );
+#endif
+#ifdef XASH_OGC_TEXTRACE
+	{
+		// DIAGNOSTIC: is the GX upload path running the arenas down, or is it
+		// stalling with memory still free?
+		static int n;
+		u32 a1lo = (u32)SYS_GetArena1Lo(), a1hi = (u32)SYS_GetArena1Hi();
+		u32 a2lo = (u32)SYS_GetArena2Lo(), a2hi = (u32)SYS_GetArena2Hi();
+
+		gEngfuncs.Con_Printf( "[TEX] %4d %-28s a1lo=%08x a1hi=%08x a2lo=%08x a2hi=%08x\n",
+			n++, tex->name, a1lo, a1hi, a2lo, a2hi );
+	}
+#endif
+#if XASH_OGC_TRACE
+	printf( "[TRACE] upload>> %s %dx%d\n", tex->name, pic ? pic->width : -1, pic ? pic->height : -1 );
+#endif
 	// dedicated server
 	if( !glw_state.initialized )
 		return true;
@@ -1103,6 +1272,9 @@ static qboolean GL_UploadTexture( gl_texture_t *tex, rgbdata_t *pic )
 	SetBits( tex->flags, TF_IMG_UPLOADED ); // done
 	tex->numMips /= numSides;
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] upload<< %s ok\n", tex->name );
+#endif
 	return true;
 }
 
@@ -1270,6 +1442,21 @@ static gl_texture_t *GL_AllocTexture( const char *name, texFlags_t flags )
 	tex->texnum = texnum;
 	tex->flags = flags;
 
+#ifdef XASH_OGC_SLOTWATCH
+	{
+		// is this GL name already held by another live texture?
+		for( uint k = 0; k < MAX_TEXTURES; k++ )
+		{
+			if( &gl_textures[k] == tex || gl_textures[k].texnum != texnum )
+				continue;
+
+			gEngfuncs.Con_Printf( "[ALIAS] glname=%u now on slot %d (%s) but slot %d (%s) still holds it\n",
+				(unsigned)texnum, (int)( tex - gl_textures ), name, (int)k, gl_textures[k].name );
+			break;
+		}
+	}
+#endif
+
 	// increase counter
 	gl_numTextures = Q_max(( tex - gl_textures ) + 1, gl_numTextures );
 	if( skyboxhack )
@@ -1371,6 +1558,98 @@ void GL_UpdateTexSize( int texnum, int width, int height, int depth )
 		}
 	}
 }
+
+#if XASH_OGC && defined( XASH_OGC_HEAPPROBE )
+#include <malloc.h>
+// how much of the console's memory the loaded texture set is holding.
+// opengx keeps every texture resident in main RAM for the GPU to read, so
+// this is real memory, not a video-only budget.
+void GL_ReportTextureMemory( const char *when )
+{
+	size_t total = 0, over256 = 0, biggest = 0;
+	int used = 0, countOver = 0;
+
+	for( int i = 0; i < MAX_TEXTURES; i++ )
+	{
+		gl_texture_t *tex = &gl_textures[i];
+
+		if( !tex->texnum || !tex->name[0] )
+			continue;
+
+		used++;
+		total += tex->size;
+
+		if( tex->size > biggest )
+			biggest = tex->size;
+
+		if( tex->width > 256 || tex->height > 256 )
+		{
+			countOver++;
+			over256 += tex->size;
+		}
+	}
+
+	size_t byFormat[6] = { 0 };
+	int    numFormat[6] = { 0 };
+
+	for( int i = 0; i < MAX_TEXTURES; i++ )
+	{
+		gl_texture_t *tex = &gl_textures[i];
+		int slot;
+
+		if( !tex->texnum || !tex->name[0] )
+			continue;
+
+		switch( tex->format )
+		{
+		case GL_RGBA8: case GL_RGBA: slot = 0; break;
+		case GL_RGB8: case GL_RGB: slot = 1; break;
+		case GL_LUMINANCE8: slot = 2; break;
+		case GL_INTENSITY8: slot = 3; break;
+		case GL_LUMINANCE8_ALPHA8: slot = 4; break;
+		default: slot = 5; break;
+		}
+
+		byFormat[slot] += tex->size;
+		numFormat[slot]++;
+	}
+
+	{
+		extern void *SYS_GetArena1Lo( void ), *SYS_GetArena1Hi( void );
+		extern void *SYS_GetArena2Lo( void ), *SYS_GetArena2Hi( void );
+
+		struct mallinfo mi = mallinfo();
+
+		// arena2 is only what malloc has not claimed yet. Once it sbrks a
+		// block, freeing puts it on malloc's own free list rather than back
+		// in the arena, so arena2 alone reads like a leak when nothing has
+		// leaked. What is actually left is arena2 plus that free list.
+		gEngfuncs.Con_Printf( "[TEX] %s: arena1 %i KB, arena2 %i KB, malloc free %i KB, TOTAL FREE %i KB\n", when,
+			(int)(((char *)SYS_GetArena1Hi() - (char *)SYS_GetArena1Lo() ) / 1024 ),
+			(int)(((char *)SYS_GetArena2Hi() - (char *)SYS_GetArena2Lo() ) / 1024 ),
+			(int)( mi.fordblks / 1024 ),
+			(int)(((( char *)SYS_GetArena2Hi() - (char *)SYS_GetArena2Lo() ) + mi.fordblks ) / 1024 ));
+	}
+
+	gEngfuncs.Con_Printf( "[TEX] %s: %i textures, %i.%02i MB total; %i over 256px holding %i.%02i MB; biggest %i KB\n",
+		when, used, (int)( total >> 20 ), (int)((( total & 0xFFFFF ) * 100 ) >> 20 ),
+		countOver, (int)( over256 >> 20 ), (int)((( over256 & 0xFFFFF ) * 100 ) >> 20 ),
+		(int)( biggest >> 10 ));
+
+	{
+		static const char *const names[6] = { "RGBA8", "RGB", "LUM8", "INT8", "LUMA8", "other" };
+
+		for( int i = 0; i < 6; i++ )
+		{
+			if( !numFormat[i] )
+				continue;
+
+			gEngfuncs.Con_Printf( "[TEX]   %-6s %4i textures  %i.%02i MB\n", names[i], numFormat[i],
+				(int)( byFormat[i] >> 20 ), (int)((( byFormat[i] & 0xFFFFF ) * 100 ) >> 20 ));
+		}
+	}
+}
+#endif
 
 /*
 ================
@@ -1741,6 +2020,13 @@ GL_FreeTexture
 */
 void GL_FreeTexture( unsigned int texnum )
 {
+#ifdef XASH_OGC_SLOTWATCH
+	if( texnum == XASH_OGC_SLOTWATCH )
+	{
+		const gl_texture_t *t = &gl_textures[texnum];
+		gEngfuncs.Con_Printf( "[SLOT] free %d (%s)\n", texnum, t->name );
+	}
+#endif
 	// number 0 it's already freed
 	if( texnum == 0 || texnum >= MAX_TEXTURES )
 		return;
@@ -2070,7 +2356,14 @@ R_InitImages
 */
 void R_InitImages( void )
 {
-	memset( gl_textures, 0, sizeof( gl_textures ));
+	if( !gl_textures )
+	{
+		gl_textures = calloc( MAX_TEXTURES, sizeof( *gl_textures ));
+		if( !gl_textures )
+			gEngfuncs.Host_Error( "%s: failed to allocate %d textures\n", __func__, MAX_TEXTURES );
+	}
+
+	memset( gl_textures, 0, MAX_TEXTURES * sizeof( *gl_textures ));
 	memset( gl_texturesHashTable, 0, sizeof( gl_texturesHashTable ));
 	gl_numTextures = 0;
 
@@ -2103,7 +2396,7 @@ void R_ShutdownImages( void )
 
 	memset( tr.lightmapTextures, 0, sizeof( tr.lightmapTextures ));
 	memset( gl_texturesHashTable, 0, sizeof( gl_texturesHashTable ));
-	memset( gl_textures, 0, sizeof( gl_textures ));
+	memset( gl_textures, 0, MAX_TEXTURES * sizeof( *gl_textures ));
 	gl_numTextures = 0;
 }
 

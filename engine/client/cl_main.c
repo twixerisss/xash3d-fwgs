@@ -16,6 +16,7 @@ GNU General Public License for more details.
 #include <inttypes.h>
 #include "common.h"
 #include "client.h"
+#include "platform/platform.h"
 #include "net_encode.h"
 #include "cl_tent.h"
 #include "input.h"
@@ -805,6 +806,11 @@ static void CL_CreateCmd( void )
 	Platform_PreCreateMove();
 	clgame.dllFuncs.CL_CreateMove( host.frametime, cmd, active );
 	IN_EngineAppendMove( host.frametime, cmd, active );
+#if XASH_OGC
+	// the shot follows the pointer; the camera does not
+	if( active )
+		OGC_ApplyPointerToAim( cmd->viewangles, &cmd->forwardmove, &cmd->sidemove );
+#endif
 
 	CL_PopPMStates();
 

@@ -82,6 +82,23 @@ static void Sys_FlushLogfile( void )
 
 void Sys_InitLog( void )
 {
+#if XASH_OGC
+	// The Homebrew Channel gives the engine no command line, so -log can never
+	// be passed and a crash on a real console leaves nothing behind to read.
+	// Log unconditionally: the file on the card is the only way a player can
+	// send back what actually happened. Writes are buffered, and Sys_CloseLog
+	// closes the file, so an engine level error still lands on the card.
+	{
+		extern qboolean OGC_MountSD( void );
+
+		if( OGC_MountSD( ))
+		{
+			Q_strncpy( s_ld.log_path, "sd:/xash3d/engine.log", sizeof( s_ld.log_path ));
+			s_ld.log_active = true;
+		}
+	}
+#endif
+
 	if( Sys_CheckParm( "-log" ))
 	{
 		if( !Sys_GetParmFromCmdLine( "-log", s_ld.log_path ) || !isalnum((byte)s_ld.log_path[0] ))
@@ -258,6 +275,15 @@ static void Sys_WriteLogfile( int fd, const char *logtime, size_t logtime_len, c
 	{
 		// not critical for us
 	}
+
+#if XASH_OGC
+	// libfat holds written data until the file is closed, and a console that
+	// has just crashed never gets there. Commit every line: the whole point of
+	// this file is to survive the thing that killed the engine. Console output
+	// is sparse once a map is running, so the card only sees a write when
+	// something has actually happened.
+	fsync( fd );
+#endif
 }
 
 static void Sys_PrintStdout( const char *logtime, size_t logtime_len, const char *msg, const char *stripped )

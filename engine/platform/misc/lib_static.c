@@ -28,6 +28,9 @@ typedef struct table_s
 
 static void *Lib_Find(table_t *tbl, const char *name )
 {
+	if( !tbl )
+		return NULL;
+
 	while( tbl->name )
 	{
 		if( !Q_strcmp( tbl->name, name) )

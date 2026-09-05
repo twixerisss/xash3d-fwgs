@@ -445,6 +445,10 @@ void IN_Init( void )
 
 		IN_GyroInit();
 
+#if XASH_OGC
+		OGC_InputInit();
+#endif
+
 		OSK_Init();
 
 		Joy_Init(); // common joystick support init
@@ -562,6 +566,10 @@ static void IN_CollectInput( float *forward, float *side, float *pitch, float *y
 #endif
 	}
 
+#if XASH_OGC
+	OGC_PointerMove( pitch, yaw );
+#endif
+
 	IN_GyroFinalizeMove( forward, side, pitch, yaw );
 	Joy_FinalizeMove( forward, side, pitch, yaw );
 	Touch_GetMove( forward, side, pitch, yaw );
@@ -644,6 +652,10 @@ Called every frame, even if not generating commands
 */
 void Host_InputFrame( void )
 {
+#if XASH_OGC
+	OGC_ButtonsFrame();
+#endif
+
 	IN_Commands();
 
 	IN_MouseMove();

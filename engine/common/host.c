@@ -74,7 +74,10 @@ static CVAR_DEFINE_AUTO( host_serverstate, "0", FCVAR_READ_ONLY, "displays curre
 static CVAR_DEFINE_AUTO( host_gameloaded, "0", FCVAR_READ_ONLY, "inidcates a loaded game.dll" );
 static CVAR_DEFINE_AUTO( host_clientloaded, "0", FCVAR_READ_ONLY, "inidcates a loaded client.dll" );
 CVAR_DEFINE_AUTO( host_limitlocal, "0", 0, "apply cl_cmdrate and rate to loopback connection" );
-CVAR_DEFINE( host_maxfps, "fps_max", "72", FCVAR_ARCHIVE|FCVAR_FILTERABLE, "host fps upper limit" );
+#ifndef DEFAULT_FPS_MAX
+#define DEFAULT_FPS_MAX "72"
+#endif
+CVAR_DEFINE( host_maxfps, "fps_max", DEFAULT_FPS_MAX, FCVAR_ARCHIVE|FCVAR_FILTERABLE, "host fps upper limit" );
 CVAR_DEFINE_AUTO( fps_override, "0", FCVAR_FILTERABLE, "unlock higher framerate values, not supported" );
 static CVAR_DEFINE_AUTO( host_framerate, "0", FCVAR_FILTERABLE, "locks frame timing to this value in seconds" );
 static CVAR_DEFINE( host_sleeptime, "sleeptime", "1", FCVAR_ARCHIVE|FCVAR_FILTERABLE, "milliseconds to sleep for each frame. higher values reduce fps accuracy" );
@@ -647,6 +650,21 @@ Host_Frame
 */
 void Host_Frame( double time )
 {
+#if XASH_OGC_MEMCHECK
+	// Walk every pool sentinel each frame. Corruption on this port shows up
+	// long after the fact as something unrelated, so the point is to catch it
+	// in the frame it happens rather than wherever it eventually bites.
+	{
+		static int mc_frame;
+
+		Mem_Check();
+
+		if(( mc_frame % 10 ) == 0 )
+			Con_Printf( "[MEMCHECK] frame %d clean\n", mc_frame );
+		mc_frame++;
+	}
+#endif
+
 	// decide the simulation time
 	if( !Host_FilterTime( time ))
 		return;
@@ -1276,6 +1294,41 @@ int EXPORT Host_Main( int argc, char **argv, const char *progname, int bChangeGa
 			Cbuf_AddText( "exec config.cfg\n" );
 			Cbuf_Execute();
 		}
+
+#if XASH_OGC
+		// A config.cfg copied from a PC install starts with unbindall and then
+		// binds only keyboard and mouse keys, which leaves every controller
+		// key with nothing on it. The port reads the remote correctly and the
+		// key events fire, they just land on unbound keys and nothing happens.
+		//
+		// There is no keyboard here, so put the controller bindings back after
+		// the config has had its say. userconfig.cfg runs after this and still
+		// wins, so anyone who wants their own layout keeps it.
+		// C does use and reload together: there are not enough buttons on a
+		// remote and nunchuk to give them one each, and the two rarely want
+		// pressing at the same moment. An alias keeps the release half of
+		// both +commands working.
+		Cbuf_AddText(
+			"alias +usereload \"+use; +reload\"\n"
+			"alias -usereload \"-use; -reload\"\n"
+			"bind A_BUTTON \"+jump\"\n"
+			"bind B_BUTTON \"+usereload\"\n"
+			"bind X_BUTTON \"+reload\"\n"
+			"bind Y_BUTTON \"impulse 100\"\n"
+			"bind L1_BUTTON \"+duck\"\n"
+			"bind R1_BUTTON \"+attack\"\n"
+			"bind L2_BUTTON \"+speed\"\n"
+			"bind R2_BUTTON \"+attack2\"\n"
+			"bind DPAD_UP \"+reload\"\n"
+			"bind DPAD_DOWN \"lastinv\"\n"
+			"bind DPAD_LEFT \"invprev\"\n"
+			"bind DPAD_RIGHT \"invnext\"\n"
+			"bind BACK \"pause\"\n"
+			"bind START \"cancelselect\"\n"
+			"bind MOUSE1 \"+attack\"\n"
+			"bind MOUSE2 \"+attack2\"\n" );
+		Cbuf_Execute();
+#endif
 
 		// exec all files from userconfig.d
 		Cbuf_AddText( "userconfigd\n" );

@@ -13,6 +13,94 @@ Xash3D FWGS is a heavily modified fork of an original [Xash3D Engine](https://ww
 
 ## Instrucciones de la Build
 La versión para Wii actualmente usa cmake para compilar sus binarios. Se integrará en waf en algún momento.
+**New to this? Read [Documentation/wii-setup.md](Documentation/wii-setup.md)** -
+a step-by-step guide covering the SD card layout, the two things a PC copy of
+Half-Life gets wrong, the controls, and what does and does not work yet. The
+short version follows.
+
+
+0) Rename `xash.dol` to `boot.dol` if it was compiled
+1) Move the `boot.dol` file to some directory inside the `apps` folder
+2) Copy `valve` directory to a folder named `xash3d` in the root of the sd card
+3) Run it via the Homebrew Channel
+
+## Controls
+
+Three controllers are supported. Everything below is rebindable from
+Options -> Controls, where the buttons show up under their engine names.
+
+### Wii remote + nunchuk
+
+A nunchuk is required for this scheme: the stick is how you move.
+
+| Button | Action |
+| --- | --- |
+| **B** (trigger) | Fire |
+| **A** | Jump |
+| **Nunchuk C** | Use / interact, and reload |
+| **Nunchuk Z** | Crouch |
+| **1** | Flashlight |
+| **2** | Secondary fire |
+| **D-pad up** | Reload |
+| **D-pad down** | Last weapon used |
+| **D-pad left / right** | Previous / next weapon |
+| **-** | Walk (hold) |
+| **+** | Pause |
+| **Home** | Menu |
+
+Aiming uses the remote's pointer. Point near the middle of the screen and only
+the weapon moves, which keeps fine aiming steady; point towards an edge and the
+view turns, faster the further out you go. Shots follow the pointer rather than
+the camera.
+
+### Classic controller
+
+| Button | Action |
+| --- | --- |
+| **R** | Fire |
+| **ZR** | Secondary fire |
+| **L** | Crouch |
+| **ZL** | Walk (hold) |
+| **a** | Jump |
+| **b** | Use / interact |
+| **x** | Reload |
+| **y** | Flashlight |
+| **D-pad left / right** | Previous / next weapon |
+| **D-pad down** | Last weapon used |
+| **+** | Pause |
+| **Home** | Menu |
+
+Left stick moves, right stick looks. There is no pointer aiming on this
+scheme, so `wii_ir 0` is worth setting if you use it exclusively.
+
+### GameCube controller
+
+| Button | Action |
+| --- | --- |
+| **R** | Fire |
+| **Z** | Secondary fire |
+| **L** | Crouch |
+| **A** | Jump |
+| **B** | Use / interact |
+| **X** | Reload |
+| **Y** | Flashlight |
+| **D-pad left / right** | Previous / next weapon |
+| **D-pad down** | Last weapon used |
+| **Start** | Menu |
+
+Left stick moves, C-stick looks.
+
+Which scheme is active is decided from what is plugged in, so a classic
+controller and a GameCube pad can both be connected without fighting each
+other. `wii_buttons 0` turns the direct reading off and falls back to whatever
+SDL makes of the controller.
+
+The menu plays `media/gamestartup.mp3`. Steam installs ship the soundtrack as
+`media/Half-Life01.mp3` and up, with no `gamestartup.mp3` at all, so the menu
+comes up silent until you copy one of them to that name.
+
+## Build instructions
+The Wii/GC port currently uses cmake to build its binaries. Will integrate it into waf at some point
 
 ## De preferencia, compile este motor por medio de una distribución Linux, es más rápido y no presenta problemas de enlace
 
@@ -27,14 +115,19 @@ La versión para Wii actualmente usa cmake para compilar sus binarios. Se integr
 *  Crea una dirección de desarrollo(Ubicada en un almacenamiento el cual no tenga espacios en su nombre, al momento de compilar no se suele encontrar archivos por este problema)
 *  Clona los siguientes repositorios en el mismo directorio.
 ```
-git clone --recursive https://github.com/MintFerret/xash3d-fwgs
-git clone --recursive https://github.com/MintFerret/mainui_cpp
-git clone --recursive https://github.com/MintFerret/hlsdk-portable
+git clone --recursive https://github.com/twixerisss/xash3d-fwgs
+git clone --recursive https://github.com/twixerisss/mainui_cpp
+git clone --recursive https://github.com/twixerisss/hlsdk-portable
 ```
 
 ### Building
 1) Configura build `cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE="/opt/devkitpro/cmake/Wii.cmake"`
 2) Compila `make -C build`
+
+Or just `./build_wii.sh`, which wraps both steps and picks up devkitPro from
+`$DEVKITPRO`. On CMake 4 the configure step additionally needs
+`-DCMAKE_POLICY_VERSION_MINIMUM=3.5`, because the vendored opus still declares
+a pre-3.5 minimum; the helper script passes it for you.
 
 This will build:
 - the filesystem
@@ -45,6 +138,108 @@ This will build:
 ### Nota: 
 -Este es un proyecto en desarrollo. 
 -Es posible muy probable toparse con errores e inestabilidad 
+### Build options
+
+| option | default | meaning |
+| --- | --- | --- |
+| `XASH_RENDERER` | `soft` | `soft` for the software rasteriser, `gl` for ref_gl on opengx. Only one can be linked - both compile `ref/common` and both export `GetRefAPI`. |
+| `XASH_LOW_MEMORY` | `2` | Engine memory profile. `0` currently crashes on map load - see below. It no longer affects the menu artwork, which is controlled separately by `ui_lowmemory`. |
+| `XASH_OGC_TRACE` | `OFF` | Report model loads and texture uploads over the gecko. |
+
+The heap lives in MEM2 (`MALLOC_MEM2` in `sys_ogc.c`). MEM1 holds the
+executable, and a GL build leaves only a few MB of it - not enough to load a
+map.
+
+### Performance notes
+
+The devkitPro toolchain puts `-O2 -DNDEBUG` on every target, but the `xash`
+target used to append `-Og -g3 -fno-omit-frame-pointer`, and later flags win in
+GCC. So the engine core, meaning the frame loop, the client, the server, model
+and sound loading, was the only part of the build compiled unoptimised while
+the renderer and game code were not.
+
+That is fixed, and `engine/common/host.c` is no longer an exception. It was
+pinned to `-Og` for a long time because switching it to `-O2` let the engine
+come up while almost nothing reached the screen, a symptom matching
+`Host_FilterTime` never returning true so `Host_Frame` bails before rendering.
+Retested at `-O2` across the full map set and the hang does not return, so
+whatever it depended on has been fixed since. If it ever comes back, that is
+the first thing to suspect.
+
+Measured on the c0a0 intro, counting dumped frames over a fixed wall-clock
+window, software renderer:
+
+| change | avg fps |
+| --- | --- |
+| 640x480, whole engine -Og | 25.3 |
+| 320x240 | 47.2 |
+| 320x240, engine -O2 except host.c | 49.8 |
+| 320x240, everything -O2 | pin removed, worth about 5% |
+| 320x240, 3D rendering disabled (ceiling) | 55.0 |
+
+`vid_scale` is not the way to lower the render resolution, `ref_soft` does
+not implement it and silently ignores the request. Change the video mode
+(`width`/`height`) instead. 512x384 is not a real mode here and falls back to
+640x480.
+
+### Frame pacing
+
+Both renderers wait for vsync before presenting, so the console's refresh rate
+is the frame rate ceiling: 60fps on a 60Hz console, 50fps on a 50Hz PAL mode.
+The GPU renderer goes through `SDL_GL_SetSwapInterval`, and the software
+renderer through `SDL_OGC_UpdateWindowFramebuffer`, which asks the flip to
+wait. The engine prints the mode it found at startup.
+
+`fps_max` defaults to 60 and is a fallback, not the pacing. `Host_CalcFPS`
+returns zero in single player whenever `gl_vsync` is set, which skips the
+software cap entirely, so `fps_max` only takes over once vsync is off.
+
+Default resolution is per renderer: 640x480 for the GPU, 320x240 for the
+software rasteriser, since resolution costs the CPU renderer far more.
+
+### Known limits
+
+`XASH_LOW_MEMORY=0` crashes on map load with a NULL callback in libogc's tick
+task. The menu artwork no longer depends on it, `ui_lowmemory` controls that
+on its own, so profile 0 is now only about the engine's own limits.
+
+An engine error on real hardware is still under investigation. The error
+itself is not identified; what is known is that the red exception screen
+players used to see was the shutdown crashing after the error, not the error.
+`sd:/xash3d/engine.log` now carries the reason.
+
+### Debugging
+
+The Wii has nowhere to print to, so the engine can route stdout to a USB Gecko
+in memory card slot B (`-DXASH_OGC_GECKO=1`, on by default in this tree). That
+covers everything from the first line of `main()` onwards, which is where the
+interesting crashes still are.
+
+Dolphin emulates the gecko as a TCP socket, so a headless boot can be captured
+end to end:
+
+```
+./test_wii.sh [seconds]
+```
+
+It launches Dolphin in batch mode with a USB Gecko in slot B, attaches to the
+socket and prints the engine's trace. It reads the SD image from
+`~/Library/Application Support/Dolphin/Load/WiiSD.raw` (Dolphin ignores
+`WiiSDCardPath`), which needs `xash3d/valve` in its root - the same layout as a
+real card. `SDIMG=`, `DOL=` and `DOLPHIN=` override the paths.
+
+To drive it without input, put commands in `valve/userconfig.cfg` on the card -
+it is exec'd last, after the menu is up, so `map c0a0` boots straight into the
+game. Dolphin can capture what that looks like with
+`-C Dolphin.Movie.DumpFrames=True`, which writes PNGs to `<userdir>/Dump/Frames`.
+
+Note that Dolphin's SD emulation is roughly a thousand times slower than real
+hardware - every read is a full emulated IOS round trip - so booting under the
+emulator takes minutes where a real Wii takes seconds. Don't optimise for it.
+
+### Note
+- This is a work in progress
+- Expect crashes and instability
 
 ### Créditos 
 - Uncle Mike for the original Xash3D Engine

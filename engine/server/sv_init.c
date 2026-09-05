@@ -20,7 +20,10 @@ GNU General Public License for more details.
 #include "voice.h"
 #include "pm_local.h"
 
-#if XASH_LOW_MEMORY != 2 && !XASH_OGC
+// must match server.h exactly: it declares this extern for every profile
+// except 2, where it becomes a constant. The OGC exclusion that used to be
+// here left the symbol undefined for any other memory profile.
+#if XASH_LOW_MEMORY != 2
 int SV_UPDATE_BACKUP = SINGLEPLAYER_BACKUP;
 #endif
 server_t		sv;	// local server
@@ -968,6 +971,13 @@ qboolean SV_SpawnServer( const char *mapname, const char *startspot, qboolean ba
 	if( startspot )
 	{
 		Con_Printf( "Spawn Server: %s [%s]\n", mapname, startspot );
+#if XASH_OGC && defined( XASH_OGC_HEAPPROBE )
+		{ // a landmark means a transition: show what the engine held going in,
+		  // so engine allocations can be told apart from renderer ones
+			void Mem_PrintStats( void );
+			Mem_PrintStats();
+		}
+#endif
 	}
 	else
 	{

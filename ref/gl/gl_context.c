@@ -127,6 +127,9 @@ static void Mod_UnloadTextures( model_t *mod )
 static qboolean Mod_ProcessRenderData( model_t *mod, qboolean create, const byte *buf, size_t buffersize )
 {
 	qboolean loaded = false;
+#if XASH_OGC_TRACE
+	printf( "[TRACE] Mod_ProcessRenderData %s type=%d create=%d\n", mod ? mod->name : "(null)", mod ? mod->type : -1, create );
+#endif
 
 	if( !create )
 	{
@@ -153,9 +156,17 @@ static qboolean Mod_ProcessRenderData( model_t *mod, qboolean create, const byte
 		return false;
 	}
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] MPRD switch done, drawFuncs=%p userdata=%p\n",
+		(void *)gEngfuncs.drawFuncs,
+		gEngfuncs.drawFuncs ? (void *)gEngfuncs.drawFuncs->Mod_ProcessUserData : NULL );
+#endif
 	if( gEngfuncs.drawFuncs->Mod_ProcessUserData )
 		gEngfuncs.drawFuncs->Mod_ProcessUserData( mod, true, buf );
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] MPRD exit loaded=%d\n", loaded );
+#endif
 	return loaded;
 }
 
@@ -398,6 +409,9 @@ static const char *R_GetConfigName( void )
 
 static void R_NewMap( void )
 {
+#if XASH_OGC_TRACE
+	printf( "[TRACE] R_NewMap enter\n" );
+#endif
 	tr.worldmodel = gp_cl->models[1];
 
 	R_ClearDecals(); // clear all level decals
@@ -426,15 +440,31 @@ static void R_NewMap( void )
 		tx->texturechain = NULL;
 	}
 
+#if XASH_OGC_TRACE
+	printf( "[TRACE] R_NewMap: building lightmaps\n" );
+#endif
 	GL_BuildLightmaps ();
+#if XASH_OGC_TRACE
+	printf( "[TRACE] R_NewMap: lightmaps done, VBO next\n" );
+#endif
 
 	R_ClearVBO();
 	if( R_HasEnabledVBO( ))
 		R_GenerateVBO();
 	R_ResetRipples();
+#if XASH_OGC_TRACE
+	printf( "[TRACE] R_NewMap: VBO done\n" );
+#endif
 
 	if( gEngfuncs.drawFuncs->R_NewMap != NULL )
 		gEngfuncs.drawFuncs->R_NewMap();
+
+#if XASH_OGC && defined( XASH_OGC_HEAPPROBE )
+	{
+		extern void GL_ReportTextureMemory( const char *when );
+		GL_ReportTextureMemory( "after map load" );
+	}
+#endif
 }
 
 static void R_FillRenderAPI( render_api_t *api )

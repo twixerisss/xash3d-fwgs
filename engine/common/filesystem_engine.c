@@ -262,6 +262,27 @@ static qboolean FS_LoadProgs( void )
 	return true;
 }
 
+#if XASH_OGC
+/*
+==================
+OGC_MountSD
+
+libfat has to be up before anything opens a file, and both the logfile and the
+base directory lookup need it. Whichever runs first does the mount; the other
+gets the cached answer.
+==================
+*/
+qboolean OGC_MountSD( void )
+{
+	static int mounted = -1;
+
+	if( mounted < 0 )
+		mounted = fatInitDefault() ? 1 : 0;
+
+	return mounted == 1 ? true : false;
+}
+#endif
+
 static qboolean FS_DetermineRootDirectory( char *out, size_t size )
 {
 	const char *path = getenv( "XASH3D_BASEDIR" );
@@ -281,10 +302,11 @@ static qboolean FS_DetermineRootDirectory( char *out, size_t size )
 	Sys_Error( "couldn't find %s data directory", XASH_ENGINE_NAME );
 	return false;
 #elif XASH_OGC
-	if (fatInitDefault()) {
-		Q_strncpy( out, "sd:/xash3d", size);
-			return true;
-		}
+	if( OGC_MountSD( ))
+	{
+		Q_strncpy( out, "sd:/xash3d", size );
+		return true;
+	}
 	Sys_Error( "couldn't find %s data directory", XASH_ENGINE_NAME );
 	return false;
 #elif ( XASH_SDL >= 2 ) && !XASH_NSWITCH // GetBasePath not impl'd in switch-sdl2

@@ -14,6 +14,11 @@ GNU General Public License for more details.
 */
 
 #include "gl_local.h"
+#if defined( XASH_OGC_TEXTRACE ) || defined( XASH_OGC_LMTRACE )
+#define LMARK(...) gEngfuncs.Con_Printf( "[LMARK] " __VA_ARGS__ )
+#else
+#define LMARK(...)
+#endif
 #include "xash3d_mathlib.h"
 #include "mod_local.h"
 #include "atlas.h"
@@ -686,6 +691,7 @@ static void LM_UploadDynamicBlock( void )
 
 static void LM_UploadBlock( qboolean dynamic )
 {
+	LMARK( "LM_UploadBlock dynamic=%d current=%d\n", dynamic, gl_lms.current_lightmap_texture );
 	if( dynamic )
 	{
 		GL_Bind( XASH_TEXTURE0, tr.dlightTexture );
@@ -1419,7 +1425,11 @@ static qboolean R_CheckLightMap( msurface_t *fa )
 		if( !( style >= 32 || style == 0 || style == 20 ))
 			return true;
 
-		byte temp[132*132*4];
+		// 68KB in a frame that sits inside the surface walk, entered once per
+		// visible surface per frame. The renderer is single threaded and the
+		// buffer never outlives the call, so it costs nothing to keep it out
+		// of the stack entirely.
+		static byte temp[132*132*4];
 		mextrasurf_t *info = fa->info;
 		int sample_size = gEngfuncs.Mod_SampleSizeForFace( fa );
 		int smax = ( info->lightextents[0] / sample_size ) + 1;
@@ -3928,6 +3938,7 @@ with all the surfaces from all brush models
 void GL_BuildLightmaps( void )
 {
 	int	nColinElim = 0;
+	LMARK( "enter\n" );
 
 	// release old lightmaps
 	for( int i = 0; i < MAX_LIGHTMAPS; i++ )
@@ -3958,6 +3969,7 @@ void GL_BuildLightmaps( void )
 	CL_RunLightStyles((lightstyle_t *)ENGINE_GET_PARM( PARM_GET_LIGHTSTYLES_PTR ));
 
 	LM_InitBlock();
+	LMARK( "InitBlock done, nummodels=%d\n", gp_cl->nummodels );
 
 	for( int i = 0; i < gp_cl->nummodels; i++ )
 	{
@@ -3968,8 +3980,11 @@ void GL_BuildLightmaps( void )
 		if( m->name[0] == '*' || m->type != mod_brush )
 			continue;
 
+		LMARK( "model %d '%s' numsurfaces=%d\n", i, m->name, m->numsurfaces );
+
 		for( int j = 0; j < m->numsurfaces; j++ )
 		{
+			if(( j % 200 ) == 0 ) LMARK( "  surf %d/%d\n", j, m->numsurfaces );
 			// clearing all decal chains
 			m->surfaces[j].pdecals = NULL;
 			m->surfaces[j].visframe = 0;
