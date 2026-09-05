@@ -1,5 +1,6 @@
 extern table_t lib_filesystem_stdio_exports[];
 extern table_t lib_hl_exports[]; //hl_dll
+extern table_t lib_ref_gx_exports[]; //ref_gx
 #if XASH_REF_GL_ENABLED
 extern table_t lib_ref_gl_exports[];
 #endif
@@ -11,6 +12,7 @@ extern table_t lib_menu_exports[];
 
 struct {const char *name;void *func;} libs[] = {
 { "filesystem_stdio", &lib_filesystem_stdio_exports },
+{ "ref_gx", &lib_ref_gx_exports },
 #if XASH_REF_GL_ENABLED
 { "ref_gl", &lib_ref_gl_exports },
 #endif

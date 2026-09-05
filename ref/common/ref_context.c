@@ -81,3 +81,5 @@ int EXPORT GetRefAPI( int version, ref_interface_t *funcs, ref_api_t *engfuncs, 
 
 	return REF_API_VERSION;
 }
+
+/* ref_gx touch Wed Sep  2 00:08:29 -05 2026 */
