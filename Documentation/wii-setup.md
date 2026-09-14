@@ -44,9 +44,9 @@ steamapps/common/Half-Life/valve
 
 ## Step 1: Get the engine
 
-Download `xash3d-wii-v0.1.0.zip` from the
-[releases page](https://github.com/twixerisss/xash3d-fwgs/releases) and unzip
-it to the root of your SD card, it already contains `apps/xash3d/` laid out
+Download the newest `xash3d-wii-*.zip` from the
+[releases page](https://github.com/twixerisss/xash3d-fwgs/releases/latest) and
+unzip it to the root of your SD card. It already contains both apps laid out
 for the Homebrew Channel, so you can skip to
 [step 2](#step-2--set-up-the-sd-card) and just add your game data.
 
@@ -85,9 +85,12 @@ Or lay it out by hand. The card needs to end up looking like this:
 ```
 SD:/
 ├── apps/
-│   └── xash3d/
-│       ├── boot.dol      ← the engine, renamed from xash.dol
-│       └── meta.xml      ← so the Homebrew Channel lists it properly
+│   ├── xash3d/           ← software renderer
+│   │   ├── boot.dol      ← the engine, renamed from xash.dol
+│   │   └── meta.xml      ← so the Homebrew Channel lists it properly
+│   └── xash3d-gl/        ← hardware renderer, same game
+│       ├── boot.dol
+│       └── meta.xml
 └── xash3d/
     └── valve/            ← your Half-Life game data
         ├── maps/
@@ -95,6 +98,10 @@ SD:/
         ├── sound/
         └── ...
 ```
+
+Both apps read the same `xash3d/valve` folder and share your saves and
+settings, so installing both costs you nothing but the space for a second
+`boot.dol`. They appear as two entries in the Homebrew Channel.
 
 Two details that are easy to miss:
 
@@ -301,8 +308,13 @@ pacing and `fps_max` is ignored in single player.
 
 Being straight with you about where this actually is:
 
-- **Only lightly tested on real hardware.** It boots and plays there, but the
-  bulk of the testing behind the notes below was done in Dolphin.
+- **The game can throw an error on a level change.** Seen on real hardware,
+  not reproducible under emulation, and not yet identified. If it happens, the
+  reason is written to `sd:/xash3d/engine.log`, and sending that file is the
+  single most useful thing you can do about it. Save often.
+- **Only lightly tested on real hardware.** It boots and plays there, and all
+  103 single-player and training maps load and reach gameplay, but the bulk of
+  the testing behind the notes below was done in Dolphin.
 - **Two renderers ship.** The software rasteriser at 320x240 is the default and
   the more heavily tested. The hardware renderer runs on the GPU through opengx
   at 640x480 with filtered textures; it is newer, and it is the one to fall
