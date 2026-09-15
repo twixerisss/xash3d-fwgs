@@ -13,9 +13,18 @@ LOG=/tmp/run_last.log
 # Dolphin writes the emulated SD lazily. Killing it with SIGKILL mid-write
 # corrupts the FAT, which then fails every later config write with EINVAL and
 # silently invalidates whatever test comes next.
+# Dolphin holds emulated SD writes in memory and commits them to the raw image
+# on shutdown. Six seconds was not enough: the guest would write engine.log,
+# the image would keep the previous run's copy, and the test would read stale
+# content as though it were the result. Give it room to finish before forcing.
 kill_dolphin() {
   pkill -TERM -f Dolphin 2>/dev/null
-  for i in 1 2 3 4 5 6; do pgrep -f Dolphin >/dev/null 2>&1 || return 0; sleep 1; done
+  i=0
+  while [ $i -lt 25 ]; do
+    pgrep -f Dolphin >/dev/null 2>&1 || return 0
+    sleep 1; i=$((i+1))
+  done
+  echo "warning: Dolphin ignored SIGTERM for 25s, forcing (SD writes may be lost)" >&2
   pkill -9 -f Dolphin 2>/dev/null
 }
 kill_dolphin
@@ -59,14 +68,18 @@ if s:
         if not d: break
         out.write(d)
 "
-# Did the emulator outlive the capture window, or did it die first? A log that
-# just stops means nothing until you know which. If Dolphin is gone before the
-# dwell expires, the guest crashed hard, and that is a result rather than an
-# artifact.
+# A log that just stops means nothing until you know why it stopped.
+#
+# Note what this does and does not tell you. Dolphin does not quit when the
+# guest exits: a .dol run with -b has no Homebrew Channel to return to, so the
+# emulator keeps running after the engine is gone. "Emulator alive" therefore
+# means only that the capture window ended, NOT that the game was still
+# running. To tell whether the guest died, look at whether the gecko log went
+# quiet well before the dwell expired.
 if pgrep -f Dolphin >/dev/null 2>&1; then
-  echo "$LABEL :: emulator ALIVE at cutoff (capture window ended normally)"
+  echo "$LABEL :: emulator alive at cutoff (says nothing about the guest, see log tail)"
 else
-  echo "$LABEL :: emulator DIED before cutoff (guest crashed)"
+  echo "$LABEL :: emulator DIED before cutoff (host side went down, suspect the harness)"
 fi
 kill_dolphin
 

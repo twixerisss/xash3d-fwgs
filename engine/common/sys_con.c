@@ -175,11 +175,33 @@ void Sys_CloseLog( const char *finalmsg )
 		}
 	}
 
-	fputc( '\n', s_ld.logfile );
-	fputs( "================================================================================\n", s_ld.logfile );
-	fprintf( s_ld.logfile, "%s (%i, %s, %s, %s-%s)\n", s_ld.title, Q_buildnum(), g_buildcommit, g_buildbranch, Q_buildos(), Q_buildarch());
-	fprintf( s_ld.logfile, "Stopped with reason \"%s\" at %s\n", finalmsg, Q_timestamp( TIME_FULL ));
-	fputs( "================================================================================\n", s_ld.logfile );
+	// Every other line in this file is written with write() on the raw fd,
+	// while this footer used to go through stdio on the same file. The two
+	// carry independent file positions, so the footer landed wherever stdio
+	// happened to be rather than at the end: on a real console the "Stopped
+	// with reason" line, the one that says why the engine died, went missing
+	// from the log entirely. Use the same path as everything else.
+	{
+		char footer[1024];
+		int fd = s_ld.logfileno;
+
+		Q_snprintf( footer, sizeof( footer ),
+			"\n================================================================================\n"
+			"%s (%i, %s, %s, %s-%s)\n"
+			"Stopped with reason \"%s\" at %s\n"
+			"================================================================================\n",
+			s_ld.title, Q_buildnum(), g_buildcommit, g_buildbranch, Q_buildos(), Q_buildarch(),
+			finalmsg, Q_timestamp( TIME_FULL ));
+
+		if( write( fd, footer, Q_strlen( footer )) < 0 )
+		{
+			// nothing useful left to do, we are on the way out
+		}
+#if XASH_OGC
+		fsync( fd );
+#endif
+	}
+
 	fclose( s_ld.logfile );
 	s_ld.logfile = NULL;
 }
