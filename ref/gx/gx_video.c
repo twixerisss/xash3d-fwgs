@@ -1,0 +1,400 @@
+/*
+gx_video.c - video/context init, default GX state, renderer info (Wii GX native port)
+Copyright (C) 2010 Uncle Mike
+Ported to Wii GX by Gerardo
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+*/
+
+#include "gx_local.h"
+
+#include <gccore.h>
+#include <ogc/gx.h>
+#include <ogc/video.h>
+#include <ogc/system.h>
+#include <ogc/consol.h>
+#include <malloc.h>
+
+CVAR_DEFINE( gl_extensions, "gl_allow_extensions", "1", FCVAR_GLCONFIG|FCVAR_READ_ONLY, "allow gl_extensions" );
+CVAR_DEFINE( gl_texture_anisotropy, "gl_anisotropy", "8", FCVAR_GLCONFIG, "textures anisotropic filter" );
+CVAR_DEFINE_AUTO( gl_texture_lodbias, "0.0", FCVAR_GLCONFIG, "LOD bias for mipmapped textures (perfomance|quality)" );
+CVAR_DEFINE_AUTO( gl_texture_nearest, "0", FCVAR_GLCONFIG, "disable texture filter" );
+CVAR_DEFINE_AUTO( gl_lightmap_nearest, "0", FCVAR_GLCONFIG, "disable lightmap filter" );
+CVAR_DEFINE_AUTO( gl_keeptjunctions, "1", FCVAR_GLCONFIG, "removing tjuncs causes blinking pixels" );
+CVAR_DEFINE_AUTO( gl_check_errors, "1", FCVAR_GLCONFIG, "ignore video engine errors" );
+CVAR_DEFINE_AUTO( gl_polyoffset, "2", FCVAR_GLCONFIG, "polygon offset for decals" );
+CVAR_DEFINE_AUTO( gl_polyoffset_bmodels, "2", FCVAR_GLCONFIG, "polygon offset for brush models" );
+CVAR_DEFINE_AUTO( gl_wireframe, "0", FCVAR_GLCONFIG|FCVAR_SPONLY, "show wireframe overlay" );
+CVAR_DEFINE_AUTO( gl_finish, "0", FCVAR_GLCONFIG, "use GX_DrawDone instead of a plain flush" );
+CVAR_DEFINE_AUTO( gl_nosort, "0", FCVAR_GLCONFIG, "disable sorting of translucent surfaces" );
+CVAR_DEFINE_AUTO( gl_test, "0", 0, "engine developer cvar for quick testing new features" );
+CVAR_DEFINE_AUTO( gl_msaa, "1", FCVAR_GLCONFIG, "enable or disable the GX copy-filter antialiasing" );
+CVAR_DEFINE_AUTO( gl_stencilbits, "8", FCVAR_GLCONFIG|FCVAR_READ_ONLY, "pixelformat stencil bits (0 - auto)" );
+CVAR_DEFINE_AUTO( gl_overbright, "1", FCVAR_GLCONFIG, "overbrights" );
+CVAR_DEFINE_AUTO( gl_fog, "1", FCVAR_GLCONFIG, "allow for rendering fog using the GX hardware fog unit" );
+CVAR_DEFINE_AUTO( gl_litwater_force, "0", FCVAR_GLCONFIG, "force enable lightmapped water, even if support not declared in the map" );
+CVAR_DEFINE_AUTO( r_lighting_ambient, "0.3", FCVAR_GLCONFIG, "map ambient lighting scale" );
+CVAR_DEFINE_AUTO( r_detailtextures, "1", FCVAR_GLCONFIG, "enable detail textures support" );
+CVAR_DEFINE_AUTO( r_novis, "0", 0, "ignore vis information (perfomance test)" );
+CVAR_DEFINE_AUTO( r_nocull, "0", 0, "ignore frustrum culling (perfomance test)" );
+CVAR_DEFINE_AUTO( r_lockpvs, "0", FCVAR_CHEAT, "lockpvs area at current point (pvs test)" );
+CVAR_DEFINE_AUTO( r_lockfrustum, "0", FCVAR_CHEAT, "lock frustrum area at current point (cull test)" );
+CVAR_DEFINE_AUTO( r_traceglow, "0", FCVAR_GLCONFIG, "cull flares behind models" );
+CVAR_DEFINE_AUTO( gl_round_down, "2", FCVAR_GLCONFIG|FCVAR_READ_ONLY, "round texture sizes to nearest POT value" );
+
+CVAR_DEFINE( r_vbo, "gl_vbo", "0", FCVAR_GLCONFIG|FCVAR_READ_ONLY, "draw world using VBO-style indexed arrays (unused on GX)" );
+
+CVAR_DEFINE( r_vbo_detail, "gl_vbo_detail", "0", FCVAR_GLCONFIG, "detail vbo mode (0: disable, 1: multipass, 2: singlepass, broken decal dlights)" );
+CVAR_DEFINE( r_vbo_dlightmode, "gl_vbo_dlightmode", "1", FCVAR_GLCONFIG, "vbo dlight rendering mode (0-1)" );
+CVAR_DEFINE( r_vbo_overbrightmode, "gl_vbo_overbrightmode", "0", FCVAR_GLCONFIG, "vbo overbright rendering mode (0-1)" );
+CVAR_DEFINE_AUTO( r_ripple, "0", FCVAR_GLCONFIG, "enable software-like water texture ripple simulation" );
+CVAR_DEFINE_AUTO( r_ripple_updatetime, "0.05", FCVAR_GLCONFIG, "how fast ripple simulation is" );
+CVAR_DEFINE_AUTO( r_ripple_spawntime, "0.1", FCVAR_GLCONFIG, "how fast new ripples spawn" );
+CVAR_DEFINE_AUTO( r_large_lightmaps, "0", FCVAR_GLCONFIG|FCVAR_LATCH, "enable larger lightmap atlas textures (might break custom renderer mods)" );
+
+gl_globals_t	tr;
+glconfig_t	glConfig;
+glstate_t	glState;
+glwstate_t	glw_state;
+
+static struct
+{
+	GXRModeObj	*rmode;
+	void		*xfb[2];
+	int		fb;
+	void		*fifo;
+} gxvid;
+
+static qboolean gx_video_initialized = false;
+
+#define GX_FIFO_SIZE ( 256 * 1024 )
+
+void GX_Present( void )
+{
+	if( !gx_video_initialized || !gxvid.xfb[0] )
+		return;
+
+	GX_DrawDone();
+	GX_CopyDisp( gxvid.xfb[gxvid.fb], GX_TRUE );
+
+	VIDEO_SetNextFramebuffer( gxvid.xfb[gxvid.fb] );
+	VIDEO_Flush();
+	VIDEO_WaitVSync();
+	if( gxvid.rmode && FBitSet( gxvid.rmode->viTVMode, VI_NON_INTERLACE ))
+		VIDEO_WaitVSync();
+
+	gxvid.fb ^= 1;
+}
+
+static void GX_SetDefaultTexState( void )
+{
+	memset( glState.currentTexturesIndex, -1, MAX_TEXTURE_UNITS * sizeof( *glState.currentTexturesIndex ));
+	memset( glState.currentTextures, 0, MAX_TEXTURE_UNITS * sizeof( *glState.currentTextures ));
+	memset( glState.texCoordArrayMode, 0, MAX_TEXTURE_UNITS * sizeof( *glState.texCoordArrayMode ));
+	memset( glState.genSTEnabled, 0, MAX_TEXTURE_UNITS * sizeof( *glState.genSTEnabled ));
+
+	for( int i = 0; i < MAX_TEXTURE_UNITS; i++ )
+		glState.texIdentityMatrix[i] = true;
+}
+
+static void GX_SetDefaultState( void )
+{
+	memset( &glState, 0, sizeof( glState ));
+	GX_SetDefaultTexState();
+
+	tr.draw_list = &tr.draw_stack[0];
+	tr.draw_stack_pos = 0;
+}
+
+static void GX_SetDefaults( void )
+{
+	GXColor white = { 255, 255, 255, 255 };
+
+	GX_DrawDone();
+
+	GX_SetZMode( GX_FALSE, GX_LEQUAL, GX_FALSE );
+	GX_SetCullMode( GX_CULL_NONE );
+	GX_SetScissor( 0, 0, gpGlobals->width, gpGlobals->height );
+	GX_SetChanMatColor( GX_COLOR0A0, white );
+
+	glState.stencilEnabled = false;
+
+	GX_CleanupAllTextureUnits();
+
+	GX_SetBlendMode( GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR );
+	GX_SetAlphaCompare( GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0 );
+
+	GX_SetTevOp( GX_TEVSTAGE0, GX_MODULATE );
+
+	GX_SetPointSize( (u8)( 1.2f * 6.0f ), GX_TO_ZERO );
+	GX_SetLineWidth( (u8)( 1.2f * 6.0f ), GX_TO_ZERO );
+
+	GX_Cull( XASH_CULL_NONE );
+}
+
+static void R_RenderInfo( qboolean startup )
+{
+	gEngfuncs.Con_Printf( "\n" );
+	gEngfuncs.Con_Printf( "GX_VENDOR: Nintendo\n" );
+	gEngfuncs.Con_Printf( "GX_RENDERER: Hollywood (Flipper-derived), libogc GX\n" );
+	gEngfuncs.Con_Printf( "GX_VERSION: native (fixed-function, no shader stages)\n" );
+
+	gEngfuncs.Con_Printf( "GX_MAX_TEXTURE_SIZE: %i\n", glConfig.max_2d_texture_size );
+	gEngfuncs.Con_Printf( "GX_MAX_TEXTURE_UNITS: %i\n", glConfig.max_texture_units );
+	gEngfuncs.Con_Printf( "GX_MAX_TEV_STAGES: %i\n", glConfig.max_texture_units );
+
+	gEngfuncs.Con_Printf( "\n" );
+	gEngfuncs.Con_Printf( "MODE: %ix%i (%s, %s%s)\n", gpGlobals->width, gpGlobals->height,
+		gxvid.rmode && ( gxvid.rmode->viTVMode >> 2 ) == VI_PAL ? "PAL" : "NTSC",
+		GL_Support( GX_HW_PROGRESSIVE ) ? "progressive" : "interlaced",
+		GL_Support( GX_HW_WIDESCREEN ) ? ", 16:9" : "" );
+	gEngfuncs.Con_Printf( "\n" );
+
+	gEngfuncs.Con_Printf( "Color %d bits, Alpha %d bits, Depth %d bits, Stencil %d bits\n", glConfig.color_bits,
+		glConfig.alpha_bits, glConfig.depth_bits, glConfig.stencil_bits );
+}
+
+static void R_RenderInfo_f( void )
+{
+	R_RenderInfo( false );
+}
+
+void GX_InitExtensions( void )
+{
+	memset( glConfig.extension, 0, sizeof( glConfig.extension ));
+
+	glConfig.extension[GX_HW_BASE] = true;
+	glConfig.extension[GX_HW_EFB_TO_TEXTURE] = true;
+	glConfig.extension[GX_HW_Z_COMPRESSION] = true;
+	glConfig.extension[GX_HW_MULTISAMPLE] = gl_msaa.value ? true : false;
+
+	glConfig.extension[GX_HW_WIDESCREEN] = ( CONF_GetAspectRatio() == CONF_ASPECT_16_9 ) ? true : false;
+	glConfig.extension[GX_HW_PROGRESSIVE] = ( gxvid.rmode && FBitSet( gxvid.rmode->viTVMode, VI_NON_INTERLACE )) ? true : false;
+
+	glConfig.extensions_string = "gx_efb_to_texture gx_z_compression gx_copy_filter_aa";
+	glConfig.vendor_string = "Nintendo";
+	glConfig.renderer_string = "Hollywood (GX)";
+	glConfig.version_string = "native";
+	glConfig.hardware_type = GXHW_DEVKIT;
+
+	glConfig.max_texture_units = MAX_TEXTURE_UNITS;
+	glConfig.max_texture_coords = MAX_TEXTURE_UNITS;
+	glConfig.max_teximage_units = MAX_TEXTURE_UNITS;
+	glConfig.max_2d_texture_size = 1024;
+	glConfig.max_2d_rectangle_size = 1024;
+	glConfig.max_2d_texture_layers = 1;
+	glConfig.max_3d_texture_size = 0;
+	glConfig.max_cubemap_size = 1024;
+
+	glConfig.max_texture_anisotropy = 1.0f;
+	glConfig.max_texture_lod_bias = 0.0f;
+
+	glConfig.max_vertex_uniforms = 0;
+	glConfig.max_vertex_attribs = MAX_TEXTURE_UNITS + 2;
+
+	glConfig.max_multisamples = glConfig.extension[GX_HW_MULTISAMPLE] ? 1 : 0;
+}
+
+void GX_ClearExtensions( void )
+{
+	memset( glConfig.extension, 0, sizeof( glConfig.extension ));
+}
+
+static void GX_InitCommands( void )
+{
+	gEngfuncs.Cvar_RegisterVariable( &r_lighting_ambient );
+	gEngfuncs.Cvar_RegisterVariable( &r_novis );
+	gEngfuncs.Cvar_RegisterVariable( &r_nocull );
+	gEngfuncs.Cvar_RegisterVariable( &r_detailtextures );
+	gEngfuncs.Cvar_RegisterVariable( &r_lockpvs );
+	gEngfuncs.Cvar_RegisterVariable( &r_lockfrustum );
+	gEngfuncs.Cvar_RegisterVariable( &r_traceglow );
+	gEngfuncs.Cvar_RegisterVariable( &r_studio_sort_textures );
+	gEngfuncs.Cvar_RegisterVariable( &r_studio_drawelements );
+	gEngfuncs.Cvar_RegisterVariable( &r_studio_builtin_renderer );
+	gEngfuncs.Cvar_RegisterVariable( &r_ripple );
+	gEngfuncs.Cvar_RegisterVariable( &r_ripple_updatetime );
+	gEngfuncs.Cvar_RegisterVariable( &r_ripple_spawntime );
+	gEngfuncs.Cvar_RegisterVariable( &r_shadows );
+	gEngfuncs.Cvar_RegisterVariable( &r_vbo );
+	gEngfuncs.Cvar_RegisterVariable( &r_vbo_dlightmode );
+	gEngfuncs.Cvar_RegisterVariable( &r_vbo_overbrightmode );
+	gEngfuncs.Cvar_RegisterVariable( &r_vbo_detail );
+	gEngfuncs.Cvar_RegisterVariable( &r_large_lightmaps );
+
+	gEngfuncs.Cvar_RegisterVariable( &gl_extensions );
+	gEngfuncs.Cvar_RegisterVariable( &gl_texture_nearest );
+	gEngfuncs.Cvar_RegisterVariable( &gl_lightmap_nearest );
+	gEngfuncs.Cvar_RegisterVariable( &gl_check_errors );
+	gEngfuncs.Cvar_RegisterVariable( &gl_texture_anisotropy );
+	gEngfuncs.Cvar_RegisterVariable( &gl_texture_lodbias );
+	gEngfuncs.Cvar_RegisterVariable( &gl_keeptjunctions );
+	gEngfuncs.Cvar_RegisterVariable( &gl_finish );
+	gEngfuncs.Cvar_RegisterVariable( &gl_nosort );
+	gEngfuncs.Cvar_RegisterVariable( &gl_test );
+	gEngfuncs.Cvar_RegisterVariable( &gl_wireframe );
+	gEngfuncs.Cvar_RegisterVariable( &gl_msaa );
+	gEngfuncs.Cvar_RegisterVariable( &gl_stencilbits );
+	gEngfuncs.Cvar_RegisterVariable( &gl_round_down );
+	gEngfuncs.Cvar_RegisterVariable( &gl_overbright );
+	gEngfuncs.Cvar_RegisterVariable( &gl_fog );
+	gEngfuncs.Cvar_RegisterVariable( &gl_litwater_force );
+
+	gEngfuncs.Cvar_RegisterVariable( &gl_polyoffset );
+	gEngfuncs.Cvar_RegisterVariable( &gl_polyoffset_bmodels );
+
+	gEngfuncs.Cmd_AddCommand( "r_info", R_RenderInfo_f, "display renderer info" );
+	gEngfuncs.Cmd_AddCommand( "timerefresh", SCR_TimeRefresh_f, "turn quickly and print rendering statistcs" );
+}
+
+static void R_CheckVBO( void )
+{
+	gEngfuncs.Cvar_FullSet( "r_studio_drawelements", "0", FCVAR_READ_ONLY );
+}
+
+static void GX_RemoveCommands( void )
+{
+	gEngfuncs.Cmd_RemoveCommand( "r_info" );
+	gEngfuncs.Cmd_RemoveCommand( "timerefresh" );
+}
+
+void GX_SetupAttributes( int safegl )
+{
+	if( gx_video_initialized )
+		return;
+
+	VIDEO_Init();
+
+	gxvid.rmode = VIDEO_GetPreferredMode( NULL );
+}
+
+void GX_OnContextCreated( void )
+{
+	if( gx_video_initialized )
+		return;
+
+	GXRModeObj *rmode = gxvid.rmode;
+	GXColor black = { 0, 0, 0, 0xff };
+
+	gxvid.xfb[0] = MEM_K0_TO_K1( SYS_AllocateFramebuffer( rmode ));
+	gxvid.xfb[1] = MEM_K0_TO_K1( SYS_AllocateFramebuffer( rmode ));
+	gxvid.fb = 0;
+
+	console_init( gxvid.xfb[0], 20, 20, rmode->fbWidth, rmode->xfbHeight, rmode->fbWidth * VI_DISPLAY_PIX_SZ );
+
+	VIDEO_Configure( rmode );
+	VIDEO_SetNextFramebuffer( gxvid.xfb[gxvid.fb] );
+	VIDEO_SetBlack( FALSE );
+	VIDEO_Flush();
+	VIDEO_WaitVSync();
+	if( FBitSet( rmode->viTVMode, VI_NON_INTERLACE ))
+		VIDEO_WaitVSync();
+
+	gpGlobals->width = rmode->fbWidth;
+	gpGlobals->height = rmode->efbHeight;
+	gpGlobals->desktopBitsPixel = 24;
+
+	gxvid.fifo = memalign( 32, GX_FIFO_SIZE );
+	memset( gxvid.fifo, 0, GX_FIFO_SIZE );
+	GX_Init( gxvid.fifo, GX_FIFO_SIZE );
+
+	GX_SetCopyClear( black, GX_MAX_Z24 );
+	GX_SetViewport( 0.0f, 0.0f, (f32)rmode->fbWidth, (f32)rmode->efbHeight, 0.0f, 1.0f );
+	GX_SetDispCopyYScale( (f32)rmode->xfbHeight / (f32)rmode->efbHeight );
+	GX_SetScissor( 0, 0, rmode->fbWidth, rmode->efbHeight );
+	GX_SetDispCopySrc( 0, 0, rmode->fbWidth, rmode->efbHeight );
+	GX_SetDispCopyDst( rmode->fbWidth, rmode->xfbHeight );
+	GX_SetCopyFilter( rmode->aa, rmode->sample_pattern, gl_msaa.value ? GX_TRUE : GX_FALSE, rmode->vfilter );
+	GX_SetFieldMode( rmode->field_rendering,
+		(( rmode->viHeight == 2 * rmode->xfbHeight ) ? GX_ENABLE : GX_DISABLE ));
+
+	if( rmode->aa )
+		GX_SetPixelFmt( GX_PF_RGB565_Z16, GX_ZC_LINEAR );
+	else
+		GX_SetPixelFmt( GX_PF_RGB8_Z24, GX_ZC_LINEAR );
+
+	GX_SetDispCopyGamma( GX_GM_1_0 );
+
+	glConfig.color_bits = 24;
+	glConfig.alpha_bits = rmode->aa ? 0 : 8;
+	glConfig.depth_bits = rmode->aa ? 16 : 24;
+	glConfig.stencil_bits = 0;
+	glState.stencilEnabled = false;
+
+	glConfig.msaasamples = rmode->aa ? 1 : 0;
+	glConfig.version_major = 1;
+	glConfig.version_minor = 0;
+
+	glw_state.initialized = true;
+	gx_video_initialized = true;
+
+	GX_InitExtensions();
+}
+
+qboolean R_Init( void )
+{
+	if( glw_state.initialized )
+		return true;
+
+	GX_InitCommands();
+	GL_InitRandomTable();
+
+	GX_SetDefaultState();
+
+	r_temppool = Mem_AllocPool( "Render Zone" );
+
+	GX_SetupAttributes( 0 );
+	GX_OnContextCreated();
+
+	tr.world = (struct world_static_s *)ENGINE_GET_PARM( PARM_GET_WORLD_PTR );
+	tr.palette = (color24 *)ENGINE_GET_PARM( PARM_GET_PALETTE_PTR );
+	tr.viewent = (cl_entity_t *)ENGINE_GET_PARM( PARM_GET_VIEWENT_PTR );
+	tr.texgammatable = (byte *)ENGINE_GET_PARM( PARM_GET_TEXGAMMATABLE_PTR );
+	tr.lightgammatable = (uint16_t *)ENGINE_GET_PARM( PARM_GET_LIGHTGAMMATABLE_PTR );
+	tr.screengammatable = (uint16_t *)ENGINE_GET_PARM( PARM_GET_SCREENGAMMATABLE_PTR );
+	tr.lineargammatable = (uint16_t *)ENGINE_GET_PARM( PARM_GET_LINEARGAMMATABLE_PTR );
+	tr.elights = (dlight_t *)ENGINE_GET_PARM( PARM_GET_ELIGHTS_PTR );
+
+	GX_SetDefaults();
+	R_CheckVBO();
+	R_InitImages();
+	R_StudioInit();
+	R_AliasInit();
+	R_ClearDecals();
+	R_ClearScene();
+
+	return true;
+}
+
+void R_Shutdown( void )
+{
+	if( !glw_state.initialized )
+		return;
+
+	GX_RemoveCommands();
+	R_ShutdownImages();
+
+	Mem_FreePool( &r_temppool );
+
+	GX_DrawDone();
+	VIDEO_SetBlack( TRUE );
+	VIDEO_Flush();
+	VIDEO_WaitVSync();
+
+	if( gxvid.fifo )
+	{
+		free( gxvid.fifo );
+		gxvid.fifo = NULL;
+	}
+
+	glw_state.initialized = false;
+	gx_video_initialized = false;
+}

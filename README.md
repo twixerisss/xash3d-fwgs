@@ -1,124 +1,112 @@
 # Xash3D FWGS Engine (Wii port) <img align="right" width="128" height="128" src="https://github.com/FWGS/xash3d-fwgs/raw/master/game_launch/icon-xash-material.png" alt="Xash3D FWGS icon" />
 
-Xash3D ([pronounced](https://ipa-reader.com/?text=ks%C9%91%CA%82) `[ksɑʂ]`) FWGS is a game engine, aimed to provide compatibility with Half-Life Engine and extend it, as well as to give game developers well known workflow. This is the Wii/Gamecube port of the engine
+Xash3D ([pronounced](https://ipa-reader.com/?text=ks%C9%91%CA%82) `[ksɑʂ]`) FWGS Es un motor de juego diseñado para brindar compatibilidad con Half-Life Engine y ampliarlo, además de ofrecer a los desarrolladores de juegos un flujo de trabajo conocido. Esta es la versión para Wii/Gamecube del motor.
 
 Xash3D FWGS is a heavily modified fork of an original [Xash3D Engine](https://www.moddb.com/engines/xash3d-engine) by Unkle Mike.
 
-## Installation & Running
+## actualmente el implementar GX nativo está resultado un poco complicado para este motor, yo seguiré trabajando de manera activa(solitaria) por el bien del proyecto
 
-**New to this? Read [Documentation/wii-setup.md](Documentation/wii-setup.md)** -
-a step-by-step guide covering the SD card layout, the two things a PC copy of
-Half-Life gets wrong, the controls, and what does and does not work yet. The
-short version follows.
+## Por ahora llevo un 42% de compilación exitosa(la meta es el 100% claramente)
 
+## Instalación y Ejecución 
 
-0) Rename `xash.dol` to `boot.dol` if it was compiled
-1) Move the `boot.dol` file to some directory inside the `apps` folder
-2) Copy `valve` directory to a folder named `xash3d` in the root of the sd card
-3) Run it via the Homebrew Channel
+0) Renombrar `xash.dol` a `boot.dol` una vez compilado.
+1) Mueve el archivo `boot.dol` a algún directorio dentro de la carpeta `apps`.
+2) Pega tu copia legal `valve` Dentro de la carpeta `xash3d` que deberás crear en la raíz de tu SD.
+3) Ejecútalo por medio de Homebrew Channel.
 
-## Controls
+## Controles
 
-Three controllers are supported. Everything below is rebindable from
-Options -> Controls, where the buttons show up under their engine names.
+La mayoría de controles son soportados.
+Todo lo que aparece a continuación se puede volver a enlazar desde Option-> Controls.
 
 ### Wii remote + nunchuk
 
-A nunchuk is required for this scheme: the stick is how you move.
+El Nunshuck es necesario en este esquema "Debido a que su stick es el que usarás para moverte"
 
-| Button | Action |
+| Botón | Acción |
 | --- | --- |
-| **B** (trigger) | Fire |
-| **A** | Jump |
-| **Nunchuk C** | Use / interact, and reload |
-| **Nunchuk Z** | Crouch |
-| **1** | Flashlight |
-| **2** | Secondary fire |
-| **D-pad up** | Reload |
-| **D-pad down** | Last weapon used |
-| **D-pad left / right** | Previous / next weapon |
-| **-** | Walk (hold) |
-| **+** | Pause |
+| **B** (Activar) | Fuego |
+| **A** | Saltar |
+| **Nunchuk C** | Usar / interactuar, y recargar |
+| **Nunchuk Z** | Agacharse |
+| **1** | Linterna |
+| **2** | Arma secundaria |
+| **D-pad up** | Recargar |
+| **D-pad down** | Última arma usada |
+| **D-pad left / right** | Previo / Siguiente arma|
+| **-** | Caminar (Mantén) |
+| **+** | Pausa |
 | **Home** | Menu |
 
-Aiming uses the remote's pointer. Point near the middle of the screen and only
-the weapon moves, which keeps fine aiming steady; point towards an edge and the
-view turns, faster the further out you go. Shots follow the pointer rather than
-the camera.
+Para apuntar se usa el puntero del mando. Apunta cerca del centro de la pantalla y solo se moverá el arma, lo que mantiene estable el apuntado de precisión; apunta hacia un borde y la vista girará, más rápido cuanto más te alejes. Los disparos siguen al puntero en lugar de a la cámara.
 
 ### Classic controller
 
-| Button | Action |
+| Botón | Acción |
 | --- | --- |
-| **R** | Fire |
-| **ZR** | Secondary fire |
-| **L** | Crouch |
-| **ZL** | Walk (hold) |
-| **a** | Jump |
-| **b** | Use / interact |
-| **x** | Reload |
-| **y** | Flashlight |
-| **D-pad left / right** | Previous / next weapon |
-| **D-pad down** | Last weapon used |
-| **+** | Pause |
+| **R** | Fuego |
+| **ZR** | Fuego secundaria |
+| **L** | Agacharse |
+| **ZL** | Caminar (mantenido) |
+| **a** | Saltado |
+| **b** | Usar / interactuar |
+| **x** | Recargar |
+| **y** | Linterna |
+| **D-pad left / right** | Previo / Siguiente Arma |
+| **D-pad down** | Última arma usada|
+| **+** | Pausa |
 | **Home** | Menu |
 
-Left stick moves, right stick looks. There is no pointer aiming on this
-scheme, so `wii_ir 0` is worth setting if you use it exclusively.
+El stick izquierdo mueve, el stick derecho mira. No hay apuntado por puntero en este esquema, así que `wii_ir 0` Vale la pena configurarlo si lo usas.
 
 ### GameCube controller
 
-| Button | Action |
+| Botón | Acción |
 | --- | --- |
-| **R** | Fire |
-| **Z** | Secondary fire |
-| **L** | Crouch |
-| **A** | Jump |
-| **B** | Use / interact |
-| **X** | Reload |
-| **Y** | Flashlight |
-| **D-pad left / right** | Previous / next weapon |
-| **D-pad down** | Last weapon used |
+| **R** | Fuego |
+| **Z** | Fuego secundario |
+| **L** | Agacharse |
+| **A** | Saltar |
+| **B** | Usar / interactuar |
+| **X** | Recargar |
+| **Y** | Linterna |
+| **D-pad left / right** | Previo / Siguiente arma|
+| **D-pad down** | Última arma usada |
 | **Start** | Menu |
 
-Left stick moves, C-stick looks.
+Con el stick izquierdo te mueves, con el C-stick mueves la cámara.
 
-Which scheme is active is decided from what is plugged in, so a classic
-controller and a GameCube pad can both be connected without fighting each
-other. `wii_buttons 0` turns the direct reading off and falls back to whatever
-SDL makes of the controller.
+El esquema que está activo se decide según lo que esté conectado, de modo que un mando clásico y un mando de GameCube pueden estar conectados al mismo tiempo sin presentar conflictos entre sí. `wii_buttons 0` Desactiva la lectura directa y recurre a lo que sea que SDL interprete del mando (o controlador).
 
-The menu plays `media/gamestartup.mp3`. Steam installs ship the soundtrack as
-`media/Half-Life01.mp3` and up, with no `gamestartup.mp3` at all, so the menu
-comes up silent until you copy one of them to that name.
+El menú reproduce media/gamestartup.mp3. Las versiones de Steam incluyen la banda sonora como media/Half-Life01.mp3 en adelante, sin ningún archivo gamestartup.mp3, por lo que el menú se inicia en silencio hasta que copies uno de ellos con ese nombre.
 
-## Build instructions
-The Wii/GC port currently uses cmake to build its binaries. Will integrate it into waf at some point
+## Instrucciones de la Build 
+El puerto de Wii utiliza cmake para compilar sus binarios.
 
-**NOTE: NEVER USE GitHub's ZIP ARCHIVES. GitHub doesn't include external dependencies we're using!**
+## De preferencia, compile este motor por medio de una distribución Linux, es más rápido y no presenta problemas de enlace
 
-### Prerequisites
+**NOTE: NUNCA USE LOS ARCHIVOS ZIP DE GitHub. GitHub no incluye las dependencias externas que estamos utilizando!**
 
-*  Install CMake
-*  Install [devkitPro](https://devkitpro.org/wiki/Getting_Started)
-*  Install devkitPPC and the needed libraries
+### Prerrequisitos
+
+*  Instala CMake
+*  Instala [devkitPro](https://devkitpro.org/wiki/Getting_Started)
+*  Instala devkitPPC y las siguientes librerías faltantes
  `sudo (dkp-)pacman -S wii-dev wii-sdl2 wii-opengx ppc-bzip2 ppc-freetype ppc-zlib`
-*  Create a development directory
-*  Clone the following repositories in the same directory
+*  Crea una dirección de desarrollo(Ubicada en un almacenamiento el cual no tenga espacios en su nombre, al momento de compilar no se suele encontrar archivos por este problema)
+*  Clona los siguientes repositorios en el mismo directorio.
 ```
-git clone --recursive https://github.com/twixerisss/xash3d-fwgs
-git clone --recursive https://github.com/twixerisss/mainui_cpp
-git clone --recursive https://github.com/twixerisss/hlsdk-portable
+git clone --recursive https://github.com/Gerardo-Hub17/xash3d-fwgs
+git clone --recursive https://github.com/Gerardo-Hub17/mainui_cpp
+git clone --recursive https://github.com/Gerardo-Hub17/hlsdk-portable
 ```
 
 ### Building
-1) Configure build `cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE="/opt/devkitpro/cmake/Wii.cmake"`
-2) Compile `make -C build`
+1) Configura build `cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE="/opt/devkitpro/cmake/Wii.cmake"`
+2) Compila `make -C build`
 
-Or just `./build_wii.sh`, which wraps both steps and picks up devkitPro from
-`$DEVKITPRO`. On CMake 4 the configure step additionally needs
-`-DCMAKE_POLICY_VERSION_MINIMUM=3.5`, because the vendored opus still declares
-a pre-3.5 minimum; the helper script passes it for you.
+O simplemente ./build_wii.sh, que envuelve ambos pasos y toma devkitPro de $DEVKITPRO. En CMake 4, el paso de configuración necesita adicionalmente -DCMAKE_POLICY_VERSION_MINIMUM=3.5, porque el opus empaquetado (vendored) todavía declara un mínimo anterior a 3.5; el script de ayuda lo pasa por ti.
 
 This will build:
 - the filesystem
@@ -126,8 +114,11 @@ This will build:
 -  mainui
 -  the engine itself
 
-### Build options
+### Nota: 
+-Este es un proyecto en desarrollo. 
+-Es posible muy probable toparse con errores e inestabilidad 
 
+### Build options
 | option | default | meaning |
 | --- | --- | --- |
 | `XASH_RENDERER` | `soft` | `soft` for the software rasteriser, `gl` for ref_gl on opengx. Only one can be linked - both compile `ref/common` and both export `GetRefAPI`. |
@@ -229,7 +220,7 @@ emulator takes minutes where a real Wii takes seconds. Don't optimise for it.
 - This is a work in progress
 - Expect crashes and instability
 
-### Credits
+### Créditos 
 - Uncle Mike for the original Xash3D Engine
 - FWGS team for Xash3D FWGS fork
 - mardy for the SDL2 port and OpenGX
